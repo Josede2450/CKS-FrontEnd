@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 @layer utilities {
-  .container-1200 {
-    @apply max-w-[1200px] mx-auto px-4;
+  .container-1600 {
+    @apply max-w-[1600px] mx-auto px-4;
+  }
+
+  .rounded-50 {
+    border-radius: 50px;
   }
 }
 
