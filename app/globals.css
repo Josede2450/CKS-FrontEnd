@@ -16,3 +16,31 @@
   --color-light: #f5f5f5;
   --color-blue: #0004ff;
 }
+
+/* Keep layout width stable when pages have/ don't have a vertical scrollbar */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Fallback for older browsers (optional, shows a disabled scrollbar) */
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
+/* crystal shine */
+@keyframes crystal-shine {
+  0% {
+    transform: translateX(-120%) rotate(15deg);
+  }
+  60% {
+    transform: translateX(120%) rotate(15deg);
+  }
+  100% {
+    transform: translateX(120%) rotate(15deg);
+  }
+}
+.crystal-shine {
+  animation: crystal-shine 2.6s linear infinite;
+}

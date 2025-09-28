@@ -1,0 +1,279 @@
+// components/ui/ContactForm.tsx
+"use client";
+
+import { useMemo, useState } from "react";
+import { Raleway } from "next/font/google";
+const raleway = Raleway({ subsets: ["latin"], weight: ["600"] }); // semibold, like your screenshot
+
+type Errors = Partial<Record<"name" | "email" | "message" | "phone", string>>;
+
+export default function ContactForm() {
+  const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState<null | "ok" | "fail">(null);
+  const [serverMsg, setServerMsg] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [company, setCompany] = useState(""); // honeypot
+
+  const msgMax = 1200;
+
+  const errors: Errors = useMemo(() => {
+    const e: Errors = {};
+    if (!name.trim()) e.name = "Please enter your name.";
+    if (!email.trim()) e.email = "Please enter your email.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      e.email = "Please enter a valid email.";
+    if (!message.trim()) e.message = "Please write a brief message.";
+    else if (message.length > msgMax)
+      e.message = `Please keep your message under ${msgMax} characters.`;
+    if (phone && !/^[\d\s()+\-\.]{7,}$/.test(phone))
+      e.phone = "That phone number doesn't look right.";
+    return e;
+  }, [name, email, phone, message]);
+
+  const isInvalid = Object.keys(errors).length > 0;
+  const markTouched = (f: string) => setTouched((t) => ({ ...t, [f]: true }));
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitted(null);
+    setServerMsg(null);
+
+    // bot trap
+    if (company) {
+      setSubmitted("ok");
+      return;
+    }
+
+    if (isInvalid) {
+      setTouched({
+        name: true,
+        email: true,
+        phone: !!errors.phone,
+        message: true,
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/api/contact`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ name, email, phone, message }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        setSubmitted("fail");
+        setServerMsg(
+          text && text.length < 400
+            ? text
+            : "Something went wrong. Please try again."
+        );
+        return;
+      }
+
+      setSubmitted("ok");
+      setServerMsg("Thanks! Your message has been received.");
+      setName("");
+      setEmail("");
+      setPhone("");
+      setMessage("");
+      setTouched({});
+    } catch {
+      setSubmitted("fail");
+      setServerMsg("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // shared styles
+  const wrap = "relative";
+  const fieldGlass =
+    "peer w-full rounded-xl bg-white/20 backdrop-blur-lg border border-white/30 " +
+    "px-4 py-3 text-[14px] font-light text-gray-900 placeholder-transparent " +
+    "shadow-sm focus:outline-none focus:ring-2 focus:ring-[#E8C877] focus:border-[#E8C877]";
+  const fieldErr = "border-rose-300 focus:ring-rose-200 focus:border-rose-300";
+  const labelFloat =
+    "pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 " +
+    "text-[14px] text-gray-600 transition-all " +
+    "peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[12px] " +
+    "peer-focus:text-gray-700 " +
+    "peer-not-placeholder-shown:top-2 peer-not-placeholder-shown:translate-y-0 " +
+    "peer-not-placeholder-shown:text-[12px]";
+  const errText = "mt-1 text-[12px] text-rose-600";
+
+  return (
+    <form className="grid gap-5" onSubmit={onSubmit} noValidate>
+      {/* banner */}
+      {submitted && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-xl px-4 py-3 text-sm border ${
+            submitted === "ok"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : "bg-rose-50 text-rose-700 border-rose-200"
+          }`}
+        >
+          {serverMsg}
+        </div>
+      )}
+
+      {/* honeypot */}
+      <label className="sr-only" aria-hidden="true">
+        Company
+        <input
+          tabIndex={-1}
+          autoComplete="off"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          className="hidden"
+        />
+      </label>
+
+      {/* two columns on md+ — Name (left) + Phone (right) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Name */}
+        <div className={wrap}>
+          <input
+            id="cf-name"
+            type="text"
+            autoComplete="name"
+            placeholder="Your name"
+            className={`${fieldGlass} ${
+              touched.name && errors.name ? fieldErr : ""
+            }`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => markTouched("name")}
+            aria-invalid={!!errors.name && touched.name}
+            aria-describedby="name-err"
+          />
+          <label htmlFor="cf-name" className={labelFloat}>
+            Name
+          </label>
+          {touched.name && errors.name && (
+            <p id="name-err" className={errText}>
+              {errors.name}
+            </p>
+          )}
+        </div>
+
+        {/* Phone — moved up to replace Email spot */}
+        <div className={wrap}>
+          <input
+            id="cf-phone"
+            type="tel"
+            autoComplete="tel"
+            placeholder="Optional"
+            className={`${fieldGlass} ${
+              touched.phone && errors.phone ? fieldErr : ""
+            }`}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            onBlur={() => markTouched("phone")}
+            aria-invalid={!!errors.phone && touched.phone}
+            aria-describedby="phone-err"
+          />
+          <label htmlFor="cf-phone" className={labelFloat}>
+            Phone (optional)
+          </label>
+          {touched.phone && errors.phone && (
+            <p id="phone-err" className={errText}>
+              {errors.phone}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Email — moved down to the single-row position */}
+      <div className={wrap}>
+        <input
+          id="cf-email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          className={`${fieldGlass} ${
+            touched.email && errors.email ? fieldErr : ""
+          }`}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => markTouched("email")}
+          aria-invalid={!!errors.email && touched.email}
+          aria-describedby="email-err"
+        />
+        <label htmlFor="cf-email" className={labelFloat}>
+          Email
+        </label>
+        {touched.email && errors.email && (
+          <p id="email-err" className={errText}>
+            {errors.email}
+          </p>
+        )}
+      </div>
+
+      {/* Message */}
+      <div className="block">
+        <div className="mb-1 text-[14px] text-gray-600">Message</div>
+        <div className="relative">
+          <textarea
+            id="cf-message"
+            rows={6}
+            placeholder="Tell us a bit about your project…"
+            className={[
+              "w-full rounded-2xl bg-white/20 backdrop-blur-lg border border-white/30 px-4 py-3",
+              "text-[14px] font-light text-gray-900 shadow-sm focus:outline-none",
+              "focus:ring-2 focus:ring-[#E8C877] focus:border-[#E8C877]",
+              touched.message && errors.message
+                ? "border-rose-300 focus:ring-rose-200 focus:border-rose-300"
+                : "",
+            ].join(" ")}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onBlur={() => markTouched("message")}
+            aria-invalid={!!errors.message && touched.message}
+            aria-describedby="message-err"
+            maxLength={1300}
+          />
+          <div className="absolute right-3 bottom-3 text-[12px] text-gray-500">
+            {message.length}/{msgMax}
+          </div>
+        </div>
+        {touched.message && errors.message && (
+          <p id="message-err" className={errText}>
+            {errors.message}
+          </p>
+        )}
+      </div>
+
+      {/* Submit */}
+      <div className="pt-1 flex justify-end">
+        <button
+          type="submit"
+          disabled={loading}
+          className={[
+            `${raleway.className}`, // Apply Raleway font
+            "inline-flex items-center justify-center rounded-lg px-6 py-2 text-sm font-semibold shadow-md transition-all",
+            // Gold gradient background with black text
+            "bg-[linear-gradient(to_right,#C78B3B_0%,#E8C877_25%,#FCEBA4_50%,#E8C877_75%,#C78B3B_100%)] text-black",
+            loading ? "opacity-60 cursor-not-allowed" : "hover:opacity-90",
+          ].join(" ")}
+        >
+          {loading ? "Sending…" : "Submit"}
+        </button>
+      </div>
+    </form>
+  );
+}
