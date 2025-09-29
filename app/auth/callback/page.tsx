@@ -1,8 +1,10 @@
 "use client";
 
+export const dynamic = "force-dynamic"; // ⬅️ disables prerendering
+
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { fetchWithCsrf } from "../../lib/fetchWithCsrf"; // ✅ reuse wrapper
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -11,10 +13,8 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const ac = new AbortController();
-
     (async () => {
       try {
-        // ✅ wrapper ensures CSRF token exists
         const me = await fetchWithCsrf(`${apiBase}/api/auth/me`, {
           credentials: "include",
           cache: "no-store",
@@ -22,14 +22,12 @@ export default function AuthCallback() {
           headers: { Accept: "application/json" },
         });
 
-        // ✅ safely extract `next` param
         const nextUrl = search?.get("next") || "/dashboard";
         router.replace(me.ok ? nextUrl : "/login?error=oauth");
       } catch {
         router.replace("/login?error=oauth");
       }
     })();
-
     return () => ac.abort();
   }, [router, search, apiBase]);
 
