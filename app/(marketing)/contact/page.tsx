@@ -4,7 +4,7 @@ import Image from "next/image";
 import ContactForm from "../../components/ui/ContactForm";
 import contactArt from "../../public/images/ContactUs.jpg";
 import { Raleway, Source_Sans_3 } from "next/font/google";
-import { Instagram } from "lucide-react";
+import { Instagram, Mail } from "lucide-react"; // ✅ added Mail icon
 
 const raleway = Raleway({ subsets: ["latin"], weight: ["400", "700"] });
 const sourceSans = Source_Sans_3({ subsets: ["latin"], weight: ["200"] });
@@ -52,7 +52,6 @@ export default function ContactPage() {
             <div className="order-1 md:order-2 flex justify-center md:justify-start items-center">
               <div className="w-full max-w-[420px] bg-white rounded-[20px] shadow-xl p-6 md:p-8">
                 <div className={sourceSans.className}>
-                  {/* ✅ No apiBase prop needed */}
                   <ContactForm />
                 </div>
               </div>
@@ -74,19 +73,30 @@ export default function ContactPage() {
                 Find answers to the most common questions about our services,
                 pricing, and support. If you can’t find what you’re looking for,
                 feel free to reach out — we’re here to help. For faster
-                responses, you can also message us directly on Instagram.
+                responses, you can also message us directly on Instagram or
+                email us.
               </p>
 
-              <a
-                href="https://instagram.com/cks_software"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm md:text-base font-semibold text-black hover:underline"
-              >
-                <Instagram className="w-5 h-5" /> @cks_software
-              </a>
+              {/* ✅ Contact links */}
+              <div className="flex flex-col items-center gap-2">
+                <a
+                  href="https://instagram.com/cks_software"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm md:text-base font-semibold text-black hover:underline"
+                >
+                  <Instagram className="w-5 h-5" /> @cks_software
+                </a>
 
-              <div className="relative bg-black/10 backdrop-blur-md border border-black/20 rounded-2xl shadow-xl p-2">
+                <a
+                  href="mailto:cks.software2021@gmail.com"
+                  className="flex items-center gap-2 text-sm md:text-base font-semibold text-black hover:underline"
+                >
+                  <Mail className="w-5 h-5" /> cks.software2021@gmail.com
+                </a>
+              </div>
+
+              <div className="relative bg-black/10 backdrop-blur-md border border-black/20 rounded-2xl shadow-xl p-2 mt-4">
                 <div className="overflow-hidden rounded-xl w-[200px] h-[140px] md:w-[300px] md:h-[270px]">
                   <Image
                     src={contactArt}
