@@ -1,7 +1,6 @@
-// app/auth/login/page.tsx
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,7 +10,7 @@ import googleIcon from "../../public/images/GoogleIcon.svg";
 // ✅ import the same CSRF-aware fetch wrapper used elsewhere
 import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
-export default function LoginPage() {
+function LoginInner() {
   const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
@@ -251,5 +250,13 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPageWrapper() {
+  return (
+    <Suspense fallback={<p className="p-6 text-sm text-gray-600">Loading…</p>}>
+      <LoginInner />
+    </Suspense>
   );
 }
