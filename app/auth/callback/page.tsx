@@ -14,7 +14,7 @@ export default function AuthCallback() {
 
     (async () => {
       try {
-        // ✅ no need to manually prime; wrapper will ensure CSRF token exists
+        // ✅ wrapper ensures CSRF token exists
         const me = await fetchWithCsrf(`${apiBase}/api/auth/me`, {
           credentials: "include",
           cache: "no-store",
@@ -22,8 +22,9 @@ export default function AuthCallback() {
           headers: { Accept: "application/json" },
         });
 
-        const next = search.get("next") || "/dashboard";
-        router.replace(me.ok ? next : "/login?error=oauth");
+        // ✅ safely extract `next` param
+        const nextUrl = search?.get("next") || "/dashboard";
+        router.replace(me.ok ? nextUrl : "/login?error=oauth");
       } catch {
         router.replace("/login?error=oauth");
       }
