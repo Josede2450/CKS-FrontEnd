@@ -7,28 +7,8 @@ import Link from "next/link";
 import loginPicture from "../../public/images/login-picture.jpg";
 import googleIcon from "../../public/images/GoogleIcon.svg";
 
-/* ===== CSRF helpers (inline) ===== */
-
-/** Read the XSRF-TOKEN cookie set by Spring Security */
-function getCsrfToken(): string | null {
-  const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
-/** Ensure the CSRF cookie exists by calling a public GET that is NOT CSRF-ignored */
-async function ensureCsrfToken(apiBase: string): Promise<string | null> {
-  let t = getCsrfToken();
-  if (t) return t;
-  try {
-    await fetch(`${apiBase.replace(/\/+$/, "")}/api/services`, {
-      credentials: "include",
-      cache: "no-store",
-    });
-  } catch {
-    // ignore; cookie might still be written
-  }
-  return getCsrfToken();
-}
+// ✅ import the same CSRF-aware fetch wrapper used elsewhere
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -108,19 +88,10 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // 1) Make sure CSRF cookie is present
-      const token = (await ensureCsrfToken(apiBase)) ?? "";
-
-      // 2) POST directly to backend (avoid caching, include credentials & CSRF)
-      const res = await fetch(`${apiBase}/api/auth/login`, {
+      // ✅ Use CSRF-aware wrapper
+      const res = await fetchWithCsrf(`${apiBase}/api/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-XSRF-TOKEN": token,
-          Accept: "application/json",
-        },
-        credentials: "include",
-        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 

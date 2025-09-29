@@ -1,3 +1,4 @@
+// app/auth/forgot-password/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
@@ -5,28 +6,8 @@ import Image from "next/image";
 import Link from "next/link";
 import anonImg from "../../public/images/annonymous.jpg";
 
-/** Read the XSRF-TOKEN cookie set by Spring Security */
-function getCsrfToken(): string | null {
-  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-/** Ensure the CSRF cookie exists (hit a public GET that runs through CsrfFilter) */
-async function ensureCsrfToken(): Promise<string | null> {
-  let token = getCsrfToken();
-  if (token) return token;
-
-  try {
-    // Same-origin /api path (rewritten to backend). Include creds so Set-Cookie is accepted.
-    await fetch("/api/services", {
-      credentials: "include",
-      cache: "no-store",
-    });
-  } catch {
-    // ignore; we'll re-check cookie next
-  }
-  return getCsrfToken();
-}
+// ✅ Use CSRF-aware fetch wrapper
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -48,16 +29,10 @@ export default function ForgotPasswordPage() {
     setOk(false);
 
     try {
-      // 🔐 Make sure CSRF cookie exists, then read it
-      const token = (await ensureCsrfToken()) ?? "";
-
-      const res = await fetch("/api/auth/forgot-password", {
+      // ✅ use CSRF wrapper
+      const res = await fetchWithCsrf("/api/auth/forgot-password", {
         method: "POST",
-        credentials: "include", // safe on same-origin; allows Set-Cookie/CSRF flows
-        headers: {
-          "Content-Type": "application/json",
-          "X-XSRF-TOKEN": token, // send CSRF token
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
 
@@ -93,7 +68,7 @@ export default function ForgotPasswordPage() {
           h-auto md:h-[625px]
         "
       >
-        {/* Left side: image identical to login */}
+        {/* Left side: illustration */}
         <div className="hidden md:flex w-1/2 bg-gray-100">
           <Image
             src={anonImg}
@@ -103,7 +78,7 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        {/* Right side */}
+        {/* Right side: form */}
         <div className="flex w-full md:w-1/2 flex-col justify-center bg-[var(--color-light)] p-6 sm:p-8">
           <div className="mx-auto w-full max-w-sm md:-translate-y-6">
             <h2 className="text-center text-[30px] font-extralight mb-6">

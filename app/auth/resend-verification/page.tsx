@@ -7,26 +7,8 @@ import Image from "next/image";
 import Link from "next/link";
 import anonImg from "../../public/images/annonymous.jpg";
 
-/* === CSRF helpers === */
-function getCsrfToken(): string | null {
-  const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
-async function ensureCsrfToken(): Promise<string | null> {
-  let t = getCsrfToken();
-  if (t) return t;
-  try {
-    // Prime via any GET endpoint that goes through CsrfFilter
-    await fetch("/api/services", {
-      credentials: "include",
-      cache: "no-store",
-    });
-  } catch {
-    // ignore
-  }
-  return getCsrfToken();
-}
+// ✅ use CSRF-aware wrapper
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 export default function ResendVerificationPage() {
   const searchParams = useSearchParams();
@@ -65,15 +47,10 @@ export default function ResendVerificationPage() {
     const payload = { email: email.trim() };
 
     try {
-      const token = (await ensureCsrfToken()) ?? "";
-
-      const res = await fetch("/api/auth/resend-verification", {
+      // ✅ use wrapper instead of manual CSRF
+      const res = await fetchWithCsrf("/api/auth/resend-verification", {
         method: "POST",
-        credentials: "include", // send cookies/session
-        headers: {
-          "Content-Type": "application/json",
-          "X-XSRF-TOKEN": token, // include CSRF token
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         signal: abortRef.current.signal,
       });

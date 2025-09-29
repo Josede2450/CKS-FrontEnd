@@ -7,23 +7,8 @@ import Image from "next/image";
 import Link from "next/link";
 import doubleFace from "../../public/images/doubleface.jpg";
 
-/* === CSRF helpers === */
-function getCsrfToken(): string | null {
-  const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
-async function ensureCsrfToken(): Promise<string | null> {
-  let t = getCsrfToken();
-  if (t) return t;
-  try {
-    // Any GET that goes through Spring's CsrfFilter will set the XSRF-TOKEN cookie
-    await fetch("/api/services", { credentials: "include", cache: "no-store" });
-  } catch {
-    // ignore priming failures; we'll still try to read the cookie below
-  }
-  return getCsrfToken();
-}
+// ✅ import the CSRF-aware fetch wrapper
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 type FormState = {
   password: string;
@@ -40,7 +25,6 @@ export default function ResetPasswordPage() {
     password: "",
     confirmPassword: "",
   });
-
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -63,18 +47,15 @@ export default function ResetPasswordPage() {
 
   const validate = (f: FormState): Errors => {
     const err: Errors = {};
-
     if (!f.password) err.password = "Password is required.";
     else {
       const issues = passwordIssues(f.password);
       if (issues.length) err.password = `Password must ${issues.join(", ")}.`;
     }
-
     if (!f.confirmPassword)
       err.confirmPassword = "Please confirm your password.";
     else if (f.password !== f.confirmPassword)
       err.confirmPassword = "Passwords do not match.";
-
     return err;
   };
 
@@ -116,15 +97,10 @@ export default function ResetPasswordPage() {
     setOk(false);
 
     try {
-      const csrf = (await ensureCsrfToken()) ?? "";
-
-      const res = await fetch("/api/auth/reset-password", {
+      // ✅ Use CSRF-aware wrapper instead of manual ensureCsrfToken
+      const res = await fetchWithCsrf("/api/auth/reset-password", {
         method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-XSRF-TOKEN": csrf,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword: form.password }),
       });
 

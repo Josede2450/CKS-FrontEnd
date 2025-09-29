@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf"; // ✅ reuse wrapper
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -12,18 +13,8 @@ export default function AuthCallback() {
 
     (async () => {
       try {
-        // 1) Prime CSRF cookie (public GET that passes CsrfFilter)
-        //    so subsequent POST/PUT from the app will have XSRF-TOKEN available.
-        await fetch("/api/services", {
-          credentials: "include",
-          cache: "no-store",
-          signal: ac.signal,
-        }).catch(() => {
-          /* ignore */
-        });
-
-        // 2) Confirm session is established (same-origin so cookies apply)
-        const me = await fetch("/api/auth/me", {
+        // ✅ no need to manually prime; wrapper will ensure CSRF token exists
+        const me = await fetchWithCsrf("/api/auth/me", {
           credentials: "include",
           cache: "no-store",
           signal: ac.signal,
