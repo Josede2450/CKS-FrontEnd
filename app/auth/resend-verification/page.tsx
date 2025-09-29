@@ -1,16 +1,13 @@
-// app/auth/resend-verification/page.tsx
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Suspense, useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import anonImg from "../../public/images/annonymous.jpg";
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf"; // ✅ CSRF wrapper
 
-// ✅ use CSRF-aware wrapper
-import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
-
-export default function ResendVerificationPage() {
+function ResendVerificationInner() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -46,16 +43,13 @@ export default function ResendVerificationPage() {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
 
-    const payload = { email: email.trim() };
-
     try {
-      // ✅ use wrapper instead of manual CSRF
       const res = await fetchWithCsrf(
         `${apiBase}/api/auth/resend-verification`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ email: email.trim() }),
           signal: abortRef.current.signal,
         }
       );
@@ -73,6 +67,7 @@ export default function ResendVerificationPage() {
       }
 
       const msg = (data?.message || data?.error || "").toString();
+
       if (/already\s+verified/i.test(msg)) {
         setOkText("Your account is already verified. You can log in.");
         setOk(true);
@@ -87,6 +82,7 @@ export default function ResendVerificationPage() {
         );
         return;
       }
+
       if (res.status === 400 || res.status === 404) {
         setError(
           msg ||
@@ -106,14 +102,7 @@ export default function ResendVerificationPage() {
 
   return (
     <main className="bg-white mt-12 px-4">
-      <div
-        className="
-          mx-auto w-full max-w-[1200px]
-          flex flex-col md:flex-row items-center md:items-stretch
-          rounded-[50px] overflow-hidden shadow-md
-          h-auto md:h-[625px]
-        "
-      >
+      <div className="mx-auto w-full max-w-[1200px] flex flex-col md:flex-row items-center md:items-stretch rounded-[50px] overflow-hidden shadow-md h-auto md:h-[625px]">
         {/* Left side */}
         <div className="hidden md:flex w-1/2 bg-gray-100">
           <Image
@@ -189,5 +178,13 @@ export default function ResendVerificationPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ResendVerificationPageWrapper() {
+  return (
+    <Suspense fallback={<p className="p-6 text-sm text-gray-600">Loading…</p>}>
+      <ResendVerificationInner />
+    </Suspense>
   );
 }
