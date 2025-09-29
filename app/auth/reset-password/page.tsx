@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import doubleFace from "../../public/images/doubleface.jpg";
+import doubleFace from "../../public/images/annonymous.jpg";
 
 // ✅ import the CSRF-aware fetch wrapper
 import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
