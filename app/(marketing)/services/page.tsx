@@ -58,7 +58,8 @@ type Category = {
   slug?: string;
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+// NOTE: Use same-origin /api proxy so cookies/CSRF work automatically
+// (Make sure you have a Next.js rewrite from /api/* -> backend /api/*)
 
 const getId = (s: Svc) => s.service_id ?? s.serviceId ?? s.id!;
 const getImg = (s: Svc) => s.imageUrl ?? s.image_url ?? undefined;
@@ -117,6 +118,7 @@ export default function ServicesPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sortKey, setSortKey] = useState<SortKey>("popular");
 
+  // Fetch categories (first-party /api for same-origin cookies)
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -124,7 +126,7 @@ export default function ServicesPage() {
         setCatsLoading(true);
         setCatsErr(null);
 
-        const url = new URL(`${API}/api/categories`);
+        const url = new URL(`/api/categories`, window.location.origin);
         url.searchParams.set("page", "0");
         url.searchParams.set("size", "200");
         url.searchParams.set("sort", "name,asc");
@@ -151,6 +153,7 @@ export default function ServicesPage() {
     };
   }, []);
 
+  // Fetch all services (paged) via /api proxy
   useEffect(() => {
     let cancelled = false;
 
@@ -165,7 +168,7 @@ export default function ServicesPage() {
         const aggregated: Svc[] = [];
         const MAX_PAGES = 100;
         for (let page = 0; page < MAX_PAGES; page++) {
-          const url = new URL(`${API}/api/services`);
+          const url = new URL(`/api/services`, window.location.origin);
           if (q.trim()) url.searchParams.set("q", q.trim());
           if (selectedCategorySlug.trim())
             url.searchParams.set("category", selectedCategorySlug.trim());
@@ -219,7 +222,7 @@ export default function ServicesPage() {
   async function openModal(s: Svc) {
     const id = getId(s);
     try {
-      const res = await fetch(`${API}/api/services/${id}`, {
+      const res = await fetch(`/api/services/${id}`, {
         credentials: "include",
       });
       if (res.ok) {
@@ -484,7 +487,7 @@ export default function ServicesPage() {
               <span>Fetching services…</span>
             ) : err ? (
               <span className="text-red-600">
-                {err} — check NEXT_PUBLIC_API_URL and CORS.
+                {err} — check your /api rewrite and backend.
               </span>
             ) : (
               <span>

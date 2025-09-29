@@ -2,6 +2,55 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
+/* ========== CSRF helpers (inline, no aliases) ========== */
+
+/** Read the XSRF-TOKEN cookie set by Spring Security */
+function getCsrfToken(): string | null {
+  const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/** Hit a public GET that *is not* CSRF-ignored so the CsrfFilter sets the cookie */
+async function ensureCsrfToken(apiBase: string): Promise<string | null> {
+  let t = getCsrfToken();
+  if (t) return t;
+  try {
+    await fetch(`${apiBase}/api/services`, {
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch {
+    // ignore; cookie may still have been set
+  }
+  return getCsrfToken();
+}
+
+/** Wrapper that guarantees we send X-XSRF-TOKEN on mutating requests */
+async function fetchWithCsrf(
+  apiBase: string,
+  input: RequestInfo | URL,
+  init: RequestInit = {}
+) {
+  const method = (init.method ?? "GET").toUpperCase();
+  const needsToken = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  let headers = new Headers(init.headers as HeadersInit);
+
+  if (needsToken) {
+    const token = (await ensureCsrfToken(apiBase)) ?? "";
+    if (!headers.has("X-XSRF-TOKEN")) headers.set("X-XSRF-TOKEN", token);
+  }
+  if (!headers.has("Content-Type") && init.body) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return fetch(input, {
+    ...init,
+    headers,
+    credentials: "include",
+    cache: "no-store",
+  });
+}
+
 /* ================== API + Canonical Types ================== */
 
 interface ApiUserRow {
@@ -175,13 +224,13 @@ export default function UsersManager({
 
   // form for updates (mirrors UpdateUserRequest)
   const [form, setForm] = useState<{
-    email: string; // read-only in UI and not sent to backend
+    email: string; // read-only
     firstName: string;
     lastName: string;
     phone: string;
-    gender: "" | GenderOption; // limit to Male/Female ("" = unset)
+    gender: "" | GenderOption;
     enabled: boolean;
-    roles: RoleOption[]; // only ADMIN / CLIENT
+    roles: RoleOption[];
     avatarUrl: string;
   }>({
     email: "",
@@ -198,7 +247,7 @@ export default function UsersManager({
   const [refreshKey, setRefreshKey] = useState(0);
   const doRefresh = () => setRefreshKey((k) => k + 1);
 
-  // fetch page
+  // fetch page (no-store to avoid stale auth)
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -210,7 +259,10 @@ export default function UsersManager({
         url.searchParams.set("size", String(pageSize));
         url.searchParams.set("sort", sort);
 
-        const res = await fetch(url.toString(), { credentials: "include" });
+        const res = await fetch(url.toString(), {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error(`Failed ${res.status}`);
 
         const json = await res.json();
@@ -254,14 +306,12 @@ export default function UsersManager({
   }, [pollMs]);
 
   function openEdit(u: CanonUser) {
-    // keep only ADMIN/CLIENT in roles, discard anything else
     const onlyAllowed = (u.roles ?? [])
       .map((r) => r.toUpperCase())
       .filter((r): r is RoleOption =>
         (ROLE_OPTIONS as readonly string[]).includes(r)
       );
 
-    // restrict gender to Male/Female; otherwise empty
     const g = (u.gender ?? "").trim();
     const genderVal = (GENDER_OPTIONS as readonly string[]).includes(g)
       ? (g as GenderOption)
@@ -295,7 +345,6 @@ export default function UsersManager({
     try {
       setSaving(true);
 
-      // NOTE: email is intentionally NOT sent (read-only)
       const payload: any = {
         firstName: form.firstName || null,
         lastName: form.lastName || null,
@@ -303,15 +352,17 @@ export default function UsersManager({
         gender: form.gender || null, // "" → null
         enabled: form.enabled,
         roles: form.roles.length === 0 ? [] : form.roles, // ADMIN/CLIENT only
-        avatarUrl: form.avatarUrl ?? null, // "" clears avatar via service
+        avatarUrl: form.avatarUrl ?? null, // "" clears avatar
       };
 
-      const res = await fetch(`${apiBase}/api/users/${editing.id}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetchWithCsrf(
+        apiBase,
+        `${apiBase}/api/users/${editing.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!res.ok) {
         const text = await res.text();

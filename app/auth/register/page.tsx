@@ -18,6 +18,24 @@ type FormState = {
 
 type Errors = Partial<Record<keyof FormState, string>>;
 
+/** Read XSRF-TOKEN cookie set by Spring Security */
+function getCsrfToken(): string | null {
+  const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/** Ensure CSRF cookie exists by hitting a public GET that passes CsrfFilter */
+async function ensureCsrfToken(): Promise<string | null> {
+  let t = getCsrfToken();
+  if (t) return t;
+  try {
+    await fetch("/api/services", { credentials: "include", cache: "no-store" });
+  } catch {
+    // ignore; we'll re-check
+  }
+  return getCsrfToken();
+}
+
 export default function RegisterPage() {
   const router = useRouter();
 
@@ -120,9 +138,16 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
+      // 🔐 Ensure CSRF cookie, then include token + session
+      const token = (await ensureCsrfToken()) ?? "";
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-XSRF-TOKEN": token,
+        },
         body: JSON.stringify({
           name: form.name.trim(),
           email: form.email.trim(),
@@ -132,7 +157,14 @@ export default function RegisterPage() {
       });
 
       if (res.ok) {
-        router.push("/login");
+        // pass a flag & email so /login shows success banner & pre-fills
+        const emailParam = encodeURIComponent(form.email.trim());
+        router.push(`/login?status=verification_sent&email=${emailParam}`);
+        return;
+      }
+
+      if (res.status === 401 || res.status === 403) {
+        setServerError("Request was blocked. Please refresh and try again.");
         return;
       }
 
@@ -167,13 +199,13 @@ export default function RegisterPage() {
     <main className="bg-white mt-16 md:mt-12 px-4">
       <div
         className="
-          mx-auto w-full max-w-[1200px]  /* ← width restored */
+          mx-auto w-full max-w-[1200px]
           flex flex-col md:flex-row items-center md:items-stretch
           rounded-[56px] overflow-hidden shadow-md
-          h-auto md:h-[790px]            /* ← taller container */
+          h-auto md:h-[790px]
         "
       >
-        {/* Left image — 1/2 width, just taller via parent height */}
+        {/* Left image — 1/2 width */}
         <div className="hidden md:flex w-1/2 bg-gray-100">
           <Image
             src={towerImage}
@@ -294,7 +326,7 @@ export default function RegisterPage() {
                 {touched.phone && errors.phone ? (
                   <p className="mt-1 text-xs text-red-600">{errors.phone}</p>
                 ) : (
-                  <p className="mt-1 text-[11px] text-zinc-500">
+                  <p className="mt-1 text[11px] text-zinc-500">
                     Use 10–15 digits; you may include +, spaces, ( ), - and .
                   </p>
                 )}

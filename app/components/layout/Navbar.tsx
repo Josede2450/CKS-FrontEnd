@@ -5,8 +5,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Menu, X, ChevronDown } from "lucide-react";
 import Image from "next/image";
-import SearchBar from "../ui/SearchBar";
+// import SearchBar from "../ui/SearchBar"; // (unused; remove if you don't need it)
 import logo from "../../public/images/cks-logo.png";
+
+// ✅ no aliases — relative import to the wrapper
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -51,7 +54,7 @@ export default function Navbar() {
       const res = await fetch(`${API}/api/auth/me`, {
         credentials: "include",
         headers: { Accept: "application/json" },
-        cache: "no-store", // <- avoid stale cached 401/old user
+        cache: "no-store",
       });
       if (!res.ok) {
         setUser(null);
@@ -86,9 +89,9 @@ export default function Navbar() {
     if (loggingOut) return;
     setLoggingOut(true);
     try {
-      await fetch(`${API}/api/auth/logout`, {
+      // ✅ Wrapper guarantees CSRF header + credentials and retries once on 403
+      await fetchWithCsrf(`${API}/api/auth/logout`, {
         method: "POST",
-        credentials: "include",
         headers: { Accept: "application/json" },
       });
     } catch {
@@ -99,9 +102,22 @@ export default function Navbar() {
     }
   }, [loggingOut]);
 
-  // initial load
+  // initial load:
+  // 1) prime CSRF cookie via public GET that isn't CSRF-ignored
+  // 2) then fetch current user
   useEffect(() => {
-    refreshAuth();
+    (async () => {
+      try {
+        await fetch(`${API}/api/services`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+      } catch {
+        // ignore; token may still be set in other calls
+      } finally {
+        refreshAuth();
+      }
+    })();
   }, [refreshAuth]);
 
   // re-validate when the tab regains focus (covers redirect-from-login)

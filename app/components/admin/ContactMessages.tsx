@@ -3,6 +3,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
+// ✅ use the wrapper via a relative import (no aliases)
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
+
 // ===== Types =====
 export type ContactForm = {
   id: number;
@@ -132,7 +135,10 @@ export default function ContactMessages({
         url.searchParams.set("size", String(pageSize));
         url.searchParams.set("sort", "createdAt,desc");
 
-        const res = await fetch(url.toString(), { credentials: "include" });
+        const res = await fetch(url.toString(), {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error(`Failed ${res.status}`);
         const json = (await res.json()) as Page<ContactForm>;
         if (!cancelled) {
@@ -160,11 +166,16 @@ export default function ContactMessages({
     if (!confirm(`Delete message #${id}? This cannot be undone.`)) return;
     try {
       setDeletingId(id);
-      const res = await fetch(`${apiBase}/api/contact/${id}`, {
+
+      // ✅ CSRF-aware wrapper for DELETE
+      const res = await fetchWithCsrf(`${apiBase}/api/contact/${id}`, {
         method: "DELETE",
-        credentials: "include",
       });
-      if (!res.ok) throw new Error(`Failed to delete (#${id})`);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to delete (#${id})`);
+      }
       setItems((prev) => prev.filter((c) => c.id !== id));
     } catch (error: any) {
       alert(error?.message ?? "Could not delete");

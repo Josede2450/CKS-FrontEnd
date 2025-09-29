@@ -1,11 +1,34 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import loginPicture from "../../public/images/login-picture.jpg";
 import googleIcon from "../../public/images/GoogleIcon.svg";
+
+/* ===== CSRF helpers (inline) ===== */
+
+/** Read the XSRF-TOKEN cookie set by Spring Security */
+function getCsrfToken(): string | null {
+  const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/** Ensure the CSRF cookie exists by calling a public GET that is NOT CSRF-ignored */
+async function ensureCsrfToken(apiBase: string): Promise<string | null> {
+  let t = getCsrfToken();
+  if (t) return t;
+  try {
+    await fetch(`${apiBase.replace(/\/+$/, "")}/api/services`, {
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch {
+    // ignore; cookie might still be written
+  }
+  return getCsrfToken();
+}
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -14,6 +37,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [flash, setFlash] = useState<{
+    kind: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  const apiBase = (
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+  ).replace(/\/+$/, "");
 
   // Where to go after login (default: home)
   const returnTo = useMemo(
@@ -21,23 +52,55 @@ export default function LoginPage() {
     [searchParams]
   );
 
-  // Banner from verification redirect
-  const verified = searchParams.get("verified"); // "true" | "false" | null
-  const flash = useMemo(() => {
-    if (verified === "true") {
-      return {
-        kind: "success" as const,
+  // Pre-fill email if ?email= is provided
+  useEffect(() => {
+    const qEmail = searchParams.get("email");
+    if (qEmail) setEmail(qEmail);
+  }, [searchParams]);
+
+  // Redirect to backend if token/code present
+  useEffect(() => {
+    const token = searchParams.get("token") || searchParams.get("code");
+    if (!token) return;
+    window.location.href = `${apiBase}/api/auth/verify?token=${encodeURIComponent(
+      token
+    )}`;
+  }, [searchParams, apiBase]);
+
+  // Flash messages from query flags
+  useEffect(() => {
+    const verified = searchParams.get("verified");
+    const status = searchParams.get("status");
+
+    if (!status) {
+      setFlash(null);
+      return;
+    }
+
+    if (status === "verification_sent") {
+      setFlash({
+        kind: "success",
+        text: "Thanks for signing up! We’ve sent a verification link to your email.",
+      });
+    } else if (verified === "true" && status === "verified") {
+      setFlash({
+        kind: "success",
         text: "Account verified successfully. You can now log in.",
-      };
-    }
-    if (verified === "false") {
-      return {
-        kind: "error" as const,
+      });
+    } else if (verified === "false" && status === "invalid") {
+      setFlash({
+        kind: "error",
         text: "Invalid or expired verification link.",
-      };
+      });
+    } else if (status === "resent_new_link") {
+      setFlash({
+        kind: "error",
+        text: "Verification link expired. A new one has been sent to your email.",
+      });
+    } else {
+      setFlash(null);
     }
-    return null;
-  }, [verified]);
+  }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,15 +108,23 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      // 1) Make sure CSRF cookie is present
+      const token = (await ensureCsrfToken(apiBase)) ?? "";
+
+      // 2) POST directly to backend (avoid caching, include credentials & CSRF)
+      const res = await fetch(`${apiBase}/api/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-XSRF-TOKEN": token,
+          Accept: "application/json",
+        },
         credentials: "include",
+        cache: "no-store",
         body: JSON.stringify({ email, password }),
       });
 
       if (res.status === 204 || res.ok) {
-        // Notify (optional) and do a full reload so Navbar reads the new session immediately
         try {
           window.dispatchEvent(new Event("cks:auth-changed"));
         } catch {}
@@ -75,8 +146,7 @@ export default function LoginPage() {
   }
 
   function onGoogleClick() {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-    const nextUrl = `${window.location.origin}/auth/callback`; // ensure this route exists and sets the session
+    const nextUrl = `${window.location.origin}/auth/callback`;
     const url = `${apiBase}/api/auth/login/google?next=${encodeURIComponent(
       nextUrl
     )}`;
@@ -170,6 +240,18 @@ export default function LoginPage() {
                   className="text-[14px] italic text-[var(--color-blue)] hover:underline"
                 >
                   Create an account
+                </Link>
+              </div>
+
+              <div className="text-center text-[14px] italic">
+                Need a new link?{" "}
+                <Link
+                  href={`/auth/resend-verification${
+                    email ? `?email=${encodeURIComponent(email)}` : ""
+                  }`}
+                  className="text-[14px] italic text-[var(--color-blue)] hover:underline"
+                >
+                  Resend verification email
                 </Link>
               </div>
 

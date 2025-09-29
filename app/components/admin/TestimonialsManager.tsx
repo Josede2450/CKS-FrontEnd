@@ -3,6 +3,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
+// ✅ CSRF-aware fetch helper (relative import, no aliases)
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
+
 /* ================== API + Canonical Types ================== */
 
 interface ApiUser {
@@ -147,7 +150,7 @@ export default function TestimonialsManager({
   const [items, setItems] = useState<CanonTestimonial[]>([]);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
-  const [favoritesOnly, setFavoritesOnly] = useState(false); // filter state
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [meta, setMeta] = useState({
@@ -187,12 +190,15 @@ export default function TestimonialsManager({
       try {
         const url = new URL(`${apiBase}/api/testimonials`);
         if (q.trim()) url.searchParams.set("q", q.trim());
-        if (favoritesOnly) url.searchParams.set("favorite", "true"); // tell backend to filter favorites
+        if (favoritesOnly) url.searchParams.set("favorite", "true");
         url.searchParams.set("page", String(page));
         url.searchParams.set("size", String(pageSize));
         url.searchParams.set("sort", "createdAt,desc");
 
-        const res = await fetch(url.toString(), { credentials: "include" });
+        const res = await fetch(url.toString(), {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error(`Failed ${res.status}`);
 
         const json = (await res.json()) as PageResp<ApiRow>;
@@ -252,9 +258,9 @@ export default function TestimonialsManager({
         ? `${apiBase}/api/testimonials/${editing!.id}`
         : `${apiBase}/api/testimonials`;
 
-      const res = await fetch(url, {
+      // ✅ CSRF-aware wrapper for POST/PUT
+      const res = await fetchWithCsrf(url, {
         method: isEdit ? "PUT" : "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -288,14 +294,14 @@ export default function TestimonialsManager({
 
     try {
       const payload: any = {
-        content: t.quote ?? "", // still required by backend sanitize()
+        content: t.quote ?? "",
         favorite: !t.favorite,
       };
       if (t.userId != null) payload.user = { userId: t.userId };
 
-      const res = await fetch(`${apiBase}/api/testimonials/${t.id}`, {
+      // ✅ CSRF-aware wrapper for PUT
+      const res = await fetchWithCsrf(`${apiBase}/api/testimonials/${t.id}`, {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -304,7 +310,6 @@ export default function TestimonialsManager({
         throw new Error(text || `Failed ${res.status}`);
       }
 
-      // no special re-fetch needed, but do it to stay in sync
       doRefresh();
     } catch (e: any) {
       // rollback on error
@@ -322,11 +327,16 @@ export default function TestimonialsManager({
     if (!confirm(`Delete testimonial #${id}? This cannot be undone.`)) return;
     try {
       setDeletingId(id);
-      const res = await fetch(`${apiBase}/api/testimonials/${id}`, {
+
+      // ✅ CSRF-aware wrapper for DELETE
+      const res = await fetchWithCsrf(`${apiBase}/api/testimonials/${id}`, {
         method: "DELETE",
-        credentials: "include",
       });
-      if (!res.ok) throw new Error(`Failed to delete (#${id})`);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to delete (#${id})`);
+      }
       setItems((prev) => prev.filter((c) => c.id !== id));
       doRefresh();
     } catch (error: any) {

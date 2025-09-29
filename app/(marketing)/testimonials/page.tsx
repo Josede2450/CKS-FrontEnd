@@ -52,8 +52,6 @@ type ViewTestimonial = {
 };
 
 export default function TestimonialsPage() {
-  const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-
   const [items, setItems] = useState<ViewTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -115,11 +113,9 @@ export default function TestimonialsPage() {
       setLoading(true);
       setErr(null);
       try {
-        const url = new URL(`${API}/api/testimonials`);
-        url.searchParams.set("size", "50");
-        url.searchParams.set("sort", "createdAt,desc");
+        const url = `/api/testimonials?size=50&sort=createdAt,desc`;
 
-        const res = await fetch(url.toString(), {
+        const res = await fetch(url, {
           credentials: "include",
           headers: { Accept: "application/json" },
         });
@@ -141,12 +137,7 @@ export default function TestimonialsPage() {
           setIdx(0);
         }
       } catch (e: any) {
-        if (!cancelled)
-          setErr(
-            `${
-              e?.message ?? "Failed to load testimonials"
-            } — check NEXT_PUBLIC_API_URL and your /api/testimonials endpoint.`
-          );
+        if (!cancelled) setErr(e?.message ?? "Failed to load testimonials.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -155,7 +146,7 @@ export default function TestimonialsPage() {
     return () => {
       cancelled = true;
     };
-  }, [API]);
+  }, []); // ← no API env dependency; we use relative /api/ now
 
   const current = useMemo(
     () =>
@@ -218,12 +209,15 @@ export default function TestimonialsPage() {
             </h2>
 
             <div
-              className="inline-block mb-3 rounded-full bg-black/10 
-       px-4 py-1 text-xs md:text-sm text-black font-semibold 
-       tracking-wide ring-1 ring-black/25"
+              className="inline-block mb-3 rounded-full px-4 py-1 text-xs md:text-sm text-white font-semibold tracking-wide shadow-sm"
+              style={{
+                background:
+                  "linear-gradient(135deg, #FFD700 0%, #DAA520 50%, #8B7500 100%)",
+              }}
             >
               Opinions matter
             </div>
+
             <p className="max-w-[500px] italic font-bold text-sm md:text-lg text-black/90 leading-relaxed">
               At CKS, we value every client voice. These testimonials highlight
               the trust, creativity, and partnerships that drive us forward —
@@ -314,7 +308,7 @@ export default function TestimonialsPage() {
                         </svg>
                       </div>
 
-                      <blockquote className="text-[15px] md:text-[18px] text-gray-800 leading-relaxed italic whitespace-pre-line">
+                      <blockquote className="text-[15px] md:text[18px] text-gray-800 leading-relaxed italic whitespace-pre-line">
                         {current.quote}
                       </blockquote>
 
@@ -337,7 +331,7 @@ export default function TestimonialsPage() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={prev}
-                        className="rounded-full border border-gray-400 px-4 py-2 text-xs md:text-sm hover:bg-white/70 active:scale-95 shadow-sm bg-white"
+                        className="rounded-full border border-gray-400 px-4 py-2 text-xs md:text-sm hover:bg白/70 active:scale-95 shadow-sm bg-white"
                         aria-label="Previous testimonial"
                       >
                         ← Prev
@@ -355,7 +349,7 @@ export default function TestimonialsPage() {
                     </div>
 
                     {/* Dots */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items中心 gap-2">
                       {items.map((_, i) => (
                         <span
                           key={i}

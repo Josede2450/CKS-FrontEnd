@@ -3,6 +3,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
+// ✅ use the wrapper via a relative import (no aliases)
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
+
 /* ========= Types ========= */
 
 export type Category = {
@@ -166,7 +169,10 @@ export default function CategoryManager({
         url.searchParams.set("size", String(pageSize));
         url.searchParams.set("sort", "name,asc");
 
-        const res = await fetch(url.toString(), { credentials: "include" });
+        const res = await fetch(url.toString(), {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok) {
           const text = await res.text();
           throw new Error(text || `Failed ${res.status}`);
@@ -226,9 +232,9 @@ export default function CategoryManager({
         ? `${apiBase}/api/categories/${idForEdit}`
         : `${apiBase}/api/categories`;
 
-      const res = await fetch(url, {
+      // ✅ CSRF-aware wrapper
+      const res = await fetchWithCsrf(url, {
         method: isEdit ? "PUT" : "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -259,10 +265,12 @@ export default function CategoryManager({
     if (!confirm(`Delete category #${idLike}? This cannot be undone.`)) return;
     try {
       setDeletingId(idLike);
-      const res = await fetch(`${apiBase}/api/categories/${idLike}`, {
+
+      // ✅ CSRF-aware wrapper
+      const res = await fetchWithCsrf(`${apiBase}/api/categories/${idLike}`, {
         method: "DELETE",
-        credentials: "include",
       });
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Failed to delete (#${idLike})`);

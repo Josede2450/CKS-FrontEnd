@@ -10,7 +10,10 @@ import ServicesManager from "../../components/admin/ServicesManager";
 import TestimonialsManager from "../../components/admin/TestimonialsManager";
 import UsersManager from "../../components/admin/UsersManager";
 import FaqManager from "../../components/admin/FaqManager";
-import CategoryManager from "../../components/admin/CategoryManager"; // ✅ NEW
+import CategoryManager from "../../components/admin/CategoryManager";
+
+// ✅ CSRF-aware wrapper (relative import, no aliases)
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 type Me = {
   authenticated: boolean;
@@ -28,30 +31,61 @@ export default function DashboardPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // ---- check admin ----
   useEffect(() => {
+    const ac = new AbortController();
+
     (async () => {
       try {
+        // 1) Prime CSRF cookie with a public GET that is NOT CSRF-ignored
+        await fetch(`${API}/api/services?ts=${Date.now()}`, {
+          credentials: "include",
+          cache: "no-store",
+          signal: ac.signal,
+        });
+
+        // 2) Check current user (no cache; include cookies)
         const res = await fetch(`${API}/api/auth/me`, {
           credentials: "include",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+          signal: ac.signal,
         });
+
+        if (res.status === 401 || res.status === 403) {
+          router.replace("/login");
+          return;
+        }
         if (!res.ok) {
           router.replace("/login");
           return;
         }
+
         const data = (await res.json()) as Me;
-        const roles = new Set(
+        const rolesSet = new Set(
           [data.role, ...(data.roles ?? [])].filter(Boolean) as string[]
         );
-        if (![...roles].some((r) => r?.toUpperCase().includes("ADMIN"))) {
+
+        // 3) Normalize: accept "ROLE_ADMIN" or "ADMIN"
+        const isAdmin = [...rolesSet].some(
+          (r) => r?.toUpperCase().replace(/^ROLE_/, "") === "ADMIN"
+        );
+
+        if (!isAdmin) {
           router.replace("/");
           return;
         }
+
         setMe(data);
+      } catch {
+        if (!ac.signal.aborted) {
+          router.replace("/login");
+        }
       } finally {
-        setAuthLoading(false);
+        if (!ac.signal.aborted) setAuthLoading(false);
       }
     })();
+
+    return () => ac.abort();
   }, [router]);
 
   const heading = useMemo(
@@ -79,7 +113,7 @@ export default function DashboardPage() {
 
         <div className="h-12" />
 
-        {/* Categories Manager (NEW) */}
+        {/* Categories Manager */}
         <CategoryManager apiBase={API} pageSize={10} />
 
         <div className="h-12" />
@@ -99,7 +133,7 @@ export default function DashboardPage() {
 
         <div className="h-12" />
 
-        {/* FAQs Manager (no pollMs prop) */}
+        {/* FAQs Manager */}
         <FaqManager apiBase={API} pageSize={8} />
       </section>
 

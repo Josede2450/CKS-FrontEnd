@@ -3,6 +3,9 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
+// ✅ CSRF-aware fetch (relative import, no aliases)
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
+
 /* =========================
    Types aligned to backend
    ========================= */
@@ -34,10 +37,10 @@ export type ServiceItem = {
   most_popular?: boolean | 0 | 1;
   mostPopular?: boolean;
 
-  // NEW: categories on the entity (returned by backend)
+  // categories on the entity (returned by backend)
   categories?: Category[];
 
-  // NEW: pricing & duration
+  // pricing & duration
   price_range?: string | null; // snake
   priceRange?: string | null; // camel
   duration?: string | null;
@@ -143,8 +146,6 @@ const getPopular = (s: ServiceItem) => {
   return !!v;
 };
 const getCategories = (s: ServiceItem) => s.categories ?? [];
-
-// NEW
 const getPriceRange = (s: ServiceItem) => s.priceRange ?? s.price_range ?? "";
 const getDuration = (s: ServiceItem) => s.duration ?? "";
 
@@ -169,7 +170,7 @@ export default function ServicesManager({
   const [items, setItems] = useState<ServiceItem[]>([]);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
-  const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>(""); // NEW: top filter
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>("");
   const [showPopularOnly, setShowPopularOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -201,9 +202,9 @@ export default function ServicesManager({
     description: string;
     imageUrl: string;
     mostPopular: boolean;
-    categoryIds: number[]; // NEW
-    priceRange: string; // NEW
-    duration: string; // NEW
+    categoryIds: number[];
+    priceRange: string;
+    duration: string;
   }>({
     title: "",
     summary: "",
@@ -228,17 +229,18 @@ export default function ServicesManager({
       setCatsLoading(true);
       setCatsErr(null);
       try {
-        // Ask for a reasonable page of categories; backend may return Page or Array
         const url = new URL(`${apiBase}/api/categories`);
         url.searchParams.set("page", "0");
         url.searchParams.set("size", "200");
         url.searchParams.set("sort", "name,asc");
 
-        const res = await fetch(url.toString(), { credentials: "include" });
+        const res = await fetch(url.toString(), {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error(`Failed to load categories`);
         const data = await res.json();
 
-        // Normalize to array whether the backend returns Page<T> or T[]
         const list: Category[] = Array.isArray(data)
           ? data
           : Array.isArray(data?.content)
@@ -278,7 +280,10 @@ export default function ServicesManager({
         if (sortKey && !tryWithoutSort)
           url.searchParams.set("sort", `${sortKey},desc`);
 
-        const res = await fetch(url.toString(), { credentials: "include" });
+        const res = await fetch(url.toString(), {
+          credentials: "include",
+          cache: "no-store",
+        });
 
         if (!res.ok) {
           const text = await res.text();
@@ -343,7 +348,6 @@ export default function ServicesManager({
   }
 
   function openEdit(s: ServiceItem) {
-    // map existing category objects -> ids (tolerant)
     const currentIds = (getCategories(s) || [])
       .map((c) => getCatId(c))
       .filter((id): id is number => typeof id === "number");
@@ -364,7 +368,6 @@ export default function ServicesManager({
     try {
       setSaving(true);
 
-      // client-side guards
       if (form.priceRange && form.priceRange.length > 250) {
         throw new Error("priceRange must be ≤ 250 characters");
       }
@@ -372,7 +375,6 @@ export default function ServicesManager({
         throw new Error("duration must be ≤ 255 characters");
       }
 
-      // payload aligned to entity; include categories as id-only objects
       const payload: any = {
         title: form.title,
         summary: form.summary,
@@ -382,12 +384,10 @@ export default function ServicesManager({
         mostPopular: !!form.mostPopular,
         most_popular: !!form.mostPopular,
 
-        // NEW: pricing/duration (send both key styles)
         priceRange: form.priceRange || null,
         price_range: form.priceRange || null,
         duration: form.duration || null,
 
-        // categories
         categories:
           form.categoryIds?.map((id) => ({ categoryId: id })) ?? undefined,
       };
@@ -398,9 +398,9 @@ export default function ServicesManager({
         ? `${apiBase}/api/services/${idForEdit}`
         : `${apiBase}/api/services`;
 
-      const res = await fetch(url, {
+      // ✅ CSRF-aware wrapper for POST/PUT
+      const res = await fetchWithCsrf(url, {
         method: isEdit ? "PUT" : "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -412,7 +412,6 @@ export default function ServicesManager({
         );
       }
 
-      // close and refresh
       setCreating(false);
       setEditing(null);
       setPage(0);
@@ -428,11 +427,16 @@ export default function ServicesManager({
     if (!confirm(`Delete service #${idLike}? This cannot be undone.`)) return;
     try {
       setDeletingId(idLike);
-      const res = await fetch(`${apiBase}/api/services/${idLike}`, {
+
+      // ✅ CSRF-aware wrapper for DELETE
+      const res = await fetchWithCsrf(`${apiBase}/api/services/${idLike}`, {
         method: "DELETE",
-        credentials: "include",
       });
-      if (!res.ok) throw new Error(`Failed to delete (#${idLike})`);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to delete (#${idLike})`);
+      }
       setItems((prev) => prev.filter((c) => getId(c) !== idLike)); // optimistic
       doRefresh();
     } catch (error: any) {
@@ -442,7 +446,6 @@ export default function ServicesManager({
     }
   }
 
-  // quick toggle mostPopular
   async function togglePopular(row: ServiceItem) {
     const id = getId(row);
     if (id == null) return;
@@ -450,7 +453,6 @@ export default function ServicesManager({
       setTogglingId(id);
       const nextPopular = !getPopular(row);
 
-      // keep existing categories when toggling
       const currentCatIds = (getCategories(row) || [])
         .map((c) => getCatId(c))
         .filter((x): x is number => typeof x === "number");
@@ -464,7 +466,6 @@ export default function ServicesManager({
         mostPopular: nextPopular,
         most_popular: nextPopular,
 
-        // preserve pricing/duration
         priceRange: getPriceRange(row) || null,
         price_range: getPriceRange(row) || null,
         duration: getDuration(row) || null,
@@ -472,9 +473,9 @@ export default function ServicesManager({
         categories: currentCatIds.map((cid) => ({ categoryId: cid })),
       };
 
-      const res = await fetch(`${apiBase}/api/services/${id}`, {
+      // ✅ CSRF-aware wrapper for PUT
+      const res = await fetchWithCsrf(`${apiBase}/api/services/${id}`, {
         method: "PUT",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -484,7 +485,6 @@ export default function ServicesManager({
         throw new Error(text || "Failed to toggle popular");
       }
 
-      // optimistic update
       setItems((prev) =>
         prev.map((it) =>
           getId(it) === id
@@ -501,7 +501,6 @@ export default function ServicesManager({
 
   const sub = useMemo(() => "Newest first", []);
 
-  // client-side filter for popular only
   const visibleItems = useMemo(() => {
     const base = items;
     return showPopularOnly ? base.filter((s) => getPopular(s)) : base;
@@ -531,7 +530,7 @@ export default function ServicesManager({
               className="w-64 max-w-[70vw] rounded-full border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-gray-200"
             />
 
-            {/* NEW: Category filter */}
+            {/* Category filter */}
             <select
               value={selectedCategorySlug}
               onChange={(e) => {
@@ -571,7 +570,6 @@ export default function ServicesManager({
           </div>
         </div>
 
-        {/* Categories load state */}
         {(catsLoading || catsErr) && (
           <div className="px-5 md:px-7 py-3 text-xs text-gray-500 border-b">
             {catsLoading ? "Loading categories…" : catsErr}
@@ -588,12 +586,8 @@ export default function ServicesManager({
                 <th className="px-5 md:px-7 py-3 font-medium">Image</th>
                 <th className="px-5 md:px-7 py-3 font-medium">Description</th>
                 <th className="px-5 md:px-7 py-3 font-medium">Categories</th>
-                <th className="px-5 md:px-7 py-3 font-medium">
-                  Price Range
-                </th>{" "}
-                {/* NEW */}
-                <th className="px-5 md:px-7 py-3 font-medium">Duration</th>{" "}
-                {/* NEW */}
+                <th className="px-5 md:px-7 py-3 font-medium">Price Range</th>
+                <th className="px-5 md:px-7 py-3 font-medium">Duration</th>
                 <th className="px-5 md:px-7 py-3 font-medium">Popular</th>
                 <th className="px-5 md:px-7 py-3 font-medium whitespace-nowrap">
                   Actions
@@ -640,7 +634,7 @@ export default function ServicesManager({
                   const id = getId(s);
                   const img = getImageUrl(s);
                   const isPopular = getPopular(s);
-                  const cats = getCategories(s);
+                  const catsArr = getCategories(s);
                   return (
                     <tr
                       key={id ?? Math.random()}
@@ -654,6 +648,7 @@ export default function ServicesManager({
                       </td>
                       <td className="px-5 md:px-7 py-3">
                         {img ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={img}
                             alt="service"
@@ -673,11 +668,10 @@ export default function ServicesManager({
                         </span>
                       </td>
 
-                      {/* Categories chips */}
                       <td className="px-5 md:px-7 py-3">
                         <div className="flex flex-wrap gap-1.5">
-                          {cats && cats.length > 0 ? (
-                            cats.map((c) => (
+                          {catsArr && catsArr.length > 0 ? (
+                            catsArr.map((c) => (
                               <span
                                 key={`${getCatId(c) ?? c.slug}-chip`}
                                 className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700"
@@ -692,12 +686,10 @@ export default function ServicesManager({
                         </div>
                       </td>
 
-                      {/* NEW: Price Range */}
                       <td className="px-5 md:px-7 py-3 whitespace-nowrap text-gray-700">
                         {getPriceRange(s) || "—"}
                       </td>
 
-                      {/* NEW: Duration */}
                       <td className="px-5 md:px-7 py-3 whitespace-nowrap text-gray-700">
                         {getDuration(s) || "—"}
                       </td>
@@ -825,7 +817,7 @@ export default function ServicesManager({
             />
           </div>
 
-          {/* NEW: Price Range (≤250 chars) */}
+          {/* Price Range (≤250 chars) */}
           <div className="space-y-1">
             <label className="text-sm">
               Price Range{" "}
@@ -848,7 +840,7 @@ export default function ServicesManager({
             </p>
           </div>
 
-          {/* NEW: Duration (≤255 chars) */}
+          {/* Duration (≤255 chars) */}
           <div className="space-y-1">
             <label className="text-sm">
               Duration{" "}
@@ -871,7 +863,6 @@ export default function ServicesManager({
             </p>
           </div>
 
-          {/* Most Popular */}
           <div className="flex items-center gap-2 pt-1">
             <input
               id="mostPopular"

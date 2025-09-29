@@ -1,5 +1,7 @@
 import Image from "next/image";
+import Link from "next/link";
 import copyrightIcon from "../../public/images/Copyright.svg";
+import { Instagram } from "lucide-react"; // lightweight icon from lucide-react
 
 export default function Footer() {
   return (
@@ -24,16 +26,29 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* COPYRIGHT centered in container */}
-      <div className="mx-auto max-w-[1600px] px-4 mt-3 flex items-center justify-center gap-2 text-sm text-gray-600 font-extralight">
-        <Image
-          src={copyrightIcon}
-          alt="Copyright"
-          width={24}
-          height={19}
-          className="opacity-80"
-        />
-        <span>Copyright {new Date().getFullYear()}</span>
+      {/* COPYRIGHT + Instagram */}
+      <div className="mx-auto max-w-[1600px] px-4 mt-3 flex items-center justify-center gap-4 text-sm text-gray-600 font-extralight">
+        <div className="flex items-center gap-2">
+          <Image
+            src={copyrightIcon}
+            alt="Copyright"
+            width={24}
+            height={19}
+            className="opacity-80"
+          />
+          <span>Copyright {new Date().getFullYear()}</span>
+        </div>
+
+        {/* Instagram link */}
+        <Link
+          href="https://www.instagram.com/cks_software"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-gray-600 hover:text-pink-600 transition"
+        >
+          <Instagram size={18} />
+          <span>@cks_software</span>
+        </Link>
       </div>
     </footer>
   );

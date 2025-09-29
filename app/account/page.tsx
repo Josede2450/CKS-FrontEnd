@@ -1,7 +1,7 @@
 // app/account/page.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type CurrentUser = {
@@ -13,6 +13,27 @@ type CurrentUser = {
   phone?: string | null;
   picture?: string | null; // MeDto.picture (avatarUrl or google picture)
 };
+
+/** Read the XSRF-TOKEN cookie set by Spring Security */
+function getCsrfToken(): string | null {
+  const m =
+    typeof document !== "undefined"
+      ? document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/)
+      : null;
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/** Ensure the CSRF cookie exists (hit a public GET that goes through CsrfFilter) */
+async function ensureCsrfToken(): Promise<string | null> {
+  let t = getCsrfToken();
+  if (t) return t;
+  try {
+    await fetch("/api/services", { credentials: "include", cache: "no-store" });
+  } catch {
+    // ignore; we only care if the cookie gets set
+  }
+  return getCsrfToken();
+}
 
 function ReadonlyRow({
   label,
@@ -133,19 +154,16 @@ export default function AccountPage() {
     return true;
   };
 
-  // avatar upload
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // ---- fetch current user (MeDto) ----
+  // ---- prime CSRF cookie once, then load Me ----
   useEffect(() => {
     const ac = new AbortController();
     (async () => {
       try {
+        await ensureCsrfToken(); // make sure XSRF-TOKEN cookie exists
         const res = await fetch(`/api/users/me`, {
           credentials: "include",
           headers: { Accept: "application/json" },
+          cache: "no-store",
           signal: ac.signal,
         });
         if (res.status === 401) {
@@ -222,11 +240,18 @@ export default function AccountPage() {
     setErr(null);
 
     try {
-      setSaving(true);
+      // 🔐 Make sure CSRF cookie exists and include header
+      const token = (await ensureCsrfToken()) ?? "";
+
       const res = await fetch(`/api/users/me`, {
         method: "PUT",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-XSRF-TOKEN": token,
+        },
         body: JSON.stringify({ firstName, lastName, phone }),
       });
       if (res.status === 401) {
@@ -248,47 +273,6 @@ export default function AccountPage() {
       setEditing(false);
     } catch (e: any) {
       setErr(e?.message ?? "Could not save changes");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleAvatarFile(file: File) {
-    // Simple client validation
-    const maxMB = 5;
-    if (!file.type.startsWith("image/")) {
-      alert("Please select an image file.");
-      return;
-    }
-    if (file.size > maxMB * 1024 * 1024) {
-      alert(`Please choose an image under ${maxMB} MB.`);
-      return;
-    }
-
-    setUploading(true);
-    setErr(null);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(`/api/users/me/avatar`, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
-      if (res.status === 401) {
-        router.replace("/login");
-        return;
-      }
-      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-      const { url } = (await res.json()) as { url: string };
-
-      // cache-bust to ensure the new image shows immediately
-      const busted = `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
-      setMe((prev) => (prev ? { ...prev, picture: busted } : prev));
-    } catch (e: any) {
-      setErr(e?.message ?? "Failed to upload avatar");
-    } finally {
-      setUploading(false);
     }
   }
 
@@ -299,7 +283,7 @@ export default function AccountPage() {
         } (allowed: ${PHONE_MIN}–${PHONE_MAX})`
       : null;
 
-  const saveDisabled = saving || uploading || (editing && phoneError !== null);
+  const saveDisabled = false || (editing && phoneError !== null);
 
   return (
     <main className="min-h-screen bg-white">
@@ -310,63 +294,24 @@ export default function AccountPage() {
 
         <div className="mx-auto max-w-[680px] rounded-[28px] border border-zinc-200 bg-white shadow-sm">
           <div className="px-6 py-8 md:py-10">
-            {/* Avatar with hover edit */}
+            {/* Avatar (read-only, non-interactive) */}
             <div className="mb-6 flex justify-center">
-              <div className="relative group">
-                <div
-                  className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-zinc-100 ring-1 ring-zinc-200 md:h-28 md:w-28"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      fileInputRef.current?.click();
-                    }
-                  }}
-                  title="Change photo"
-                  aria-label="Change profile photo"
-                >
-                  {avatarUrl ? (
-                    // plain <img> avoids Next.js image-domain config
-                    <img
-                      src={avatarUrl}
-                      alt="Profile"
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display =
-                          "none";
-                      }}
-                    />
-                  ) : (
-                    <span className="select-none text-2xl text-zinc-500">
-                      {initials}
-                    </span>
-                  )}
-
-                  {/* hover overlay */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="absolute inset-0 hidden items-center justify-center rounded-full bg-black/40 text-white group-hover:flex"
-                    title="Change photo"
-                  >
-                    {uploading ? "Uploading…" : "Change"}
-                  </button>
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleAvatarFile(f);
-                    // allow selecting same file again
-                    e.currentTarget.value = "";
-                  }}
-                />
+              <div
+                className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-zinc-100 ring-1 ring-zinc-200 md:h-28 md:w-28"
+                aria-label="Profile photo"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover select-none pointer-events-none"
+                    draggable={false}
+                  />
+                ) : (
+                  <span className="select-none text-2xl text-zinc-500">
+                    {initials}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -411,13 +356,12 @@ export default function AccountPage() {
                         disabled={saveDisabled}
                         className="rounded-full bg-[var(--color-green)] px-6 py-2 text-sm font-semibold text-white hover:bg-[var(--color-green)]/90 disabled:opacity-60"
                       >
-                        {saving ? "Saving…" : "Save"}
+                        Save
                       </button>
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        disabled={saving}
-                        className="rounded-full border px-6 py-2 text-sm hover:bg-zinc-50 disabled:opacity-60"
+                        className="rounded-full border px-6 py-2 text-sm hover:bg-zinc-50"
                       >
                         Cancel
                       </button>

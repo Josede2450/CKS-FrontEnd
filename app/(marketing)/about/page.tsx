@@ -5,7 +5,6 @@ import Image from "next/image";
 
 // images (put under /public/images)
 import leftFace from "../../public/images/LeftFace.jpg";
-import rightFace from "../../public/images/RightFace.jpg";
 import brain from "../../public/images/brain.jpg";
 import signature from "../../public/images/signature.png";
 import heroSignature from "../../public/images/HeroSignature.svg"; // tagline
@@ -19,28 +18,32 @@ export default function AboutPage() {
       <div className="h-12 md:h-16" />
 
       {/* ===== TOP TAGLINE ===== */}
-      <section className="px-0">
-        <div
-          className="
-      mx-auto w-full max-w-[1200px]
-      flex flex-col md:flex-row
-      items-center
-      gap-6 md:gap-12
-      justify-center text-center
-    "
-        >
-          <p className="text-2xl md:text-4xl text-gray-900 italic">
-            We make it possible
-          </p>
-          <div className="w-28 md:w-56">
-            <Image
-              src={heroSignature}
-              alt="Signature brush"
-              width={220}
-              height={220}
-              className="object-contain mx-auto"
-              priority
-            />
+      <section className="px-6">
+        <div className="mx-auto w-full max-w-[1200px]">
+          <div
+            className="
+        grid grid-cols-1 md:grid-cols-[auto_auto]
+        justify-center items-center
+        gap-3 md:gap-8
+        text-center md:text-left
+      "
+          >
+            {/* Tagline text */}
+            <p className="text-2xl md:text-4xl text-gray-900 italic mx-auto md:mx-0">
+              We make it possible
+            </p>
+
+            {/* Brush (kept small so it never pushes the text) */}
+            <div className="w-20 sm:w-28 md:w-40 mx-auto md:mx-0">
+              <Image
+                src={heroSignature}
+                alt="Signature brush"
+                width={220}
+                height={220}
+                className="object-contain opacity-90"
+                priority
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -75,11 +78,11 @@ export default function AboutPage() {
 
             {/* center copy */}
             <div className="text-center text-white">
-              <p className="max-w-[60ch] mx-auto text-[18px] md:text-[22px] italic leading-relaxed font-semibold">
+              <p className="max-w-[60ch] mx-auto text-[16px] md:text-[20px] italic leading-relaxed font-semibold text-white">
                 CKS is a digital solutions company focused on helping businesses
-                succeed in the modern world. We specialize in web development,
-                custom software solutions, and reliable IT support that empower
-                companies to grow, adapt, and innovate.
+                succeed in the modern world. We offer Software Development,
+                Marketing, Design, and IT Support — providing innovative
+                solutions that empower companies to grow, adapt, and thrive.
               </p>
             </div>
 
@@ -88,7 +91,7 @@ export default function AboutPage() {
               <div className="relative bg-white/20 backdrop-blur-md rounded-3xl p-2 shadow-[0_12px_30px_rgba(0,0,0,0.25)] ring-1 ring-white/30">
                 <div className="overflow-hidden rounded-2xl w-[220px] h-[350px]">
                   <Image
-                    src={rightFace}
+                    src={leftFace}
                     alt="Creative portrait right"
                     className="w-full h-full object-cover"
                     priority
@@ -121,7 +124,7 @@ export default function AboutPage() {
               </div>
               <div className="relative bg-white/20 backdrop-blur-md w-[140px] h-[190px] rounded-[30px] overflow-hidden shadow ring-1 ring-white/30">
                 <Image
-                  src={rightFace}
+                  src={leftFace}
                   alt="Creative portrait 2"
                   className="w-full h-full object-cover"
                   priority
@@ -153,7 +156,7 @@ export default function AboutPage() {
 
                 <div className="mt-3 h-px w-16 bg-gradient-to-r from-[#2BD879] to-[#0b2236] rounded-full" />
 
-                <p className="mt-4 italic text-[16px] sm:text-[18px] leading-relaxed text-gray-800 max-w-[70ch]">
+                <p className="mt-4 italic text-[16px] sm:text-[20px] leading-relaxed text-gray-800 max-w-[70ch]">
                   Our mission is to combine creativity, technical expertise, and
                   strategic knowledge to deliver solutions that are not only
                   functional but also future-ready. From professional websites
@@ -252,13 +255,12 @@ export default function AboutPage() {
                 End-to-end partner
               </span>
 
-              <p className="max-w-[60ch] text-base md:text-[22px] italic leading-relaxed font-semibold">
+              <p className="max-w-[60ch] text-base md:text-[20px] italic leading-relaxed font-semibold">
                 At CKS, we believe technology should work for you, not against
                 you. That’s why we take pride in offering end-to-end services —
                 from concept to launch and beyond — making us your trusted
                 partner in digital transformation.
               </p>
-
               {/* mini highlights */}
               <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm md:text-base text-white/90">
                 <li className="flex items-center justify-center md:justify-start gap-2">
@@ -271,7 +273,31 @@ export default function AboutPage() {
                   >
                     <path d="M7.629 13.233 4.4 10.004l1.2-1.2 2.029 2.03 6.771-6.77 1.2 1.2-7.971 7.97z" />
                   </svg>
-                  Web & custom software
+                  Software development
+                </li>
+                <li className="flex items-center justify-center md:justify-start gap-2">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="opacity-90"
+                  >
+                    <path d="M7.629 13.233 4.4 10.004l1.2-1.2 2.029 2.03 6.771-6.77 1.2 1.2-7.971 7.97z" />
+                  </svg>
+                  Marketing solutions
+                </li>
+                <li className="flex items-center justify-center md:justify-start gap-2">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="opacity-90"
+                  >
+                    <path d="M7.629 13.233 4.4 10.004l1.2-1.2 2.029 2.03 6.771-6.77 1.2 1.2-7.971 7.97z" />
+                  </svg>
+                  Creative design
                 </li>
                 <li className="flex items-center justify-center md:justify-start gap-2">
                   <svg
@@ -284,30 +310,6 @@ export default function AboutPage() {
                     <path d="M7.629 13.233 4.4 10.004l1.2-1.2 2.029 2.03 6.771-6.77 1.2 1.2-7.971 7.97z" />
                   </svg>
                   Reliable IT support
-                </li>
-                <li className="flex items-center justify-center md:justify-start gap-2">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="opacity-90"
-                  >
-                    <path d="M7.629 13.233 4.4 10.004l1.2-1.2 2.029 2.03 6.771-6.77 1.2 1.2-7.971 7.97z" />
-                  </svg>
-                  Secure, scalable setups
-                </li>
-                <li className="flex items-center justify-center md:justify-start gap-2">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    className="opacity-90"
-                  >
-                    <path d="M7.629 13.233 4.4 10.004l1.2-1.2 2.029 2.03 6.771-6.77 1.2 1.2-7.971 7.97z" />
-                  </svg>
-                  Ongoing optimization
                 </li>
               </ul>
 

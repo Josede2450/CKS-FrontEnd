@@ -13,8 +13,6 @@ export type Faq = {
   answer: string;
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-
 /* ========= Enhanced FAQ Row ========= */
 function EnhancedFaqRow({ q, a }: { q: string; a: string }) {
   return (
@@ -55,7 +53,9 @@ export default function FAQPage() {
   useEffect(() => {
     async function loadFaqs() {
       try {
-        const res = await fetch(`${API}/api/faqs`);
+        const res = await fetch(`/api/faqs`, {
+          headers: { Accept: "application/json" },
+        });
         if (!res.ok) throw new Error("Failed to fetch FAQs");
         const data = await res.json();
         setFaqs(data.content ?? []);
@@ -78,8 +78,7 @@ export default function FAQPage() {
   }, [query, faqs]);
 
   return (
-    // ⬇️ Prevent horizontal scrollbar from edge-to-edge hero
-    <main className="min-h-screen bg-white overflow-x-clip">
+    <main className="min-h-screen bg-white">
       {/* TOP TAGLINE */}
       <section className="px-0 mt-12">
         <div className="mx-auto w-full max-w-[1200px] flex justify-center items-center">

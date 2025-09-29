@@ -7,6 +7,24 @@ import Image from "next/image";
 import Link from "next/link";
 import doubleFace from "../../public/images/doubleface.jpg";
 
+/* === CSRF helpers === */
+function getCsrfToken(): string | null {
+  const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+async function ensureCsrfToken(): Promise<string | null> {
+  let t = getCsrfToken();
+  if (t) return t;
+  try {
+    // Any GET that goes through Spring's CsrfFilter will set the XSRF-TOKEN cookie
+    await fetch("/api/services", { credentials: "include", cache: "no-store" });
+  } catch {
+    // ignore priming failures; we'll still try to read the cookie below
+  }
+  return getCsrfToken();
+}
+
 type FormState = {
   password: string;
   confirmPassword: string;
@@ -16,7 +34,7 @@ type Errors = Partial<Record<keyof FormState, string>>;
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  const token = (searchParams.get("token") ?? "").trim();
 
   const [form, setForm] = useState<FormState>({
     password: "",
@@ -81,6 +99,13 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setServerError(null);
 
+    if (!token) {
+      setServerError(
+        "Missing or invalid reset token. Please use the link from your email."
+      );
+      return;
+    }
+
     const err = validate(form);
     if (Object.keys(err).length > 0) {
       markTouchedAll();
@@ -91,10 +116,15 @@ export default function ResetPasswordPage() {
     setOk(false);
 
     try {
+      const csrf = (await ensureCsrfToken()) ?? "";
+
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-XSRF-TOKEN": csrf,
+        },
         body: JSON.stringify({ token, newPassword: form.password }),
       });
 
@@ -122,6 +152,8 @@ export default function ResetPasswordPage() {
         : "border-[var(--color-gray)] focus:ring-2 focus:ring-[var(--color-green)]"
     }`;
 
+  const disableForm = submitting || hasErrors || !token;
+
   return (
     <main className="bg-white mt-12 px-4">
       <div
@@ -148,6 +180,13 @@ export default function ResetPasswordPage() {
             <h2 className="text-center text-[30px] font-extralight mb-6">
               Reset Password
             </h2>
+
+            {!token && (
+              <div className="mb-4 rounded-lg p-3 text-sm bg-red-100 text-red-800 border border-red-200">
+                Missing or invalid token. Please open the reset link from your
+                email again.
+              </div>
+            )}
 
             {ok && (
               <div className="mb-4 rounded-lg p-3 text-sm bg-green-100 text-green-800 border border-green-200">
@@ -179,6 +218,7 @@ export default function ResetPasswordPage() {
                   onBlur={handleBlur}
                   className={inputClass("password")}
                   required
+                  disabled={!token || submitting}
                 />
                 {touched.password && errors.password && (
                   <p className="mt-1 text-xs text-red-600">{errors.password}</p>
@@ -202,6 +242,7 @@ export default function ResetPasswordPage() {
                   onBlur={handleBlur}
                   className={inputClass("confirmPassword")}
                   required
+                  disabled={!token || submitting}
                 />
                 {touched.confirmPassword && errors.confirmPassword && (
                   <p className="mt-1 text-xs text-red-600">
@@ -211,7 +252,7 @@ export default function ResetPasswordPage() {
               </div>
 
               <button
-                disabled={submitting || hasErrors}
+                disabled={disableForm}
                 className="w-full rounded-md bg-[var(--color-green)] py-2 text-white font-extralight hover:opacity-90 transition disabled:opacity-60"
               >
                 {submitting ? "Submitting…" : "Submit"}

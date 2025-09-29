@@ -5,6 +5,29 @@ import Image from "next/image";
 import Link from "next/link";
 import anonImg from "../../public/images/annonymous.jpg";
 
+/** Read the XSRF-TOKEN cookie set by Spring Security */
+function getCsrfToken(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/** Ensure the CSRF cookie exists (hit a public GET that runs through CsrfFilter) */
+async function ensureCsrfToken(): Promise<string | null> {
+  let token = getCsrfToken();
+  if (token) return token;
+
+  try {
+    // Same-origin /api path (rewritten to backend). Include creds so Set-Cookie is accepted.
+    await fetch("/api/services", {
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch {
+    // ignore; we'll re-check cookie next
+  }
+  return getCsrfToken();
+}
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -24,14 +47,18 @@ export default function ForgotPasswordPage() {
     setError(null);
     setOk(false);
 
-    const payload = { email: email.trim() };
-
     try {
+      // 🔐 Make sure CSRF cookie exists, then read it
+      const token = (await ensureCsrfToken()) ?? "";
+
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // IMPORTANT: do NOT include credentials for a public endpoint
-        body: JSON.stringify(payload),
+        credentials: "include", // safe on same-origin; allows Set-Cookie/CSRF flows
+        headers: {
+          "Content-Type": "application/json",
+          "X-XSRF-TOKEN": token, // send CSRF token
+        },
+        body: JSON.stringify({ email: email.trim() }),
       });
 
       if (res.ok) {
@@ -40,9 +67,8 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      // Map common auth errors to a friendly message
       if (res.status === 401 || res.status === 403) {
-        setError("Request was blocked. Please try again, or refresh the page.");
+        setError("Request was blocked. Please refresh and try again.");
         return;
       }
 
@@ -77,7 +103,7 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        {/* Right side: identical wrapper to login */}
+        {/* Right side */}
         <div className="flex w-full md:w-1/2 flex-col justify-center bg-[var(--color-light)] p-6 sm:p-8">
           <div className="mx-auto w-full max-w-sm md:-translate-y-6">
             <h2 className="text-center text-[30px] font-extralight mb-6">

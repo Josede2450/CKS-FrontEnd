@@ -3,6 +3,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
+// ✅ CSRF-aware fetch (relative import, no aliases)
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
+
 /* ============== Types ============== */
 export type Faq = {
   id: number; // mapped from id || faq_id || faqId
@@ -141,9 +144,11 @@ export default function FaqManager({
         url.searchParams.set("page", String(page));
         url.searchParams.set("size", String(pageSize));
         // DO NOT set sort — your table has no createdAt and PK is faq_id
-        // url.searchParams.set("sort", "faqId,desc");
 
-        const res = await fetch(url.toString(), { credentials: "include" });
+        const res = await fetch(url.toString(), {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok) throw new Error(`Failed ${res.status}`);
         const json = (await res.json()) as Page<any>;
 
@@ -195,16 +200,17 @@ export default function FaqManager({
           ? `${apiBase}/api/faqs`
           : `${apiBase}/api/faqs/${editing.id}`;
 
-      const res = await fetch(url, {
+      // ✅ CSRF-aware wrapper for POST/PUT
+      const res = await fetchWithCsrf(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           question: editing.question?.trim(),
           answer: editing.answer?.trim(),
           // category: editing.category?.trim() || undefined,
         }),
       });
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Failed to save (status ${res.status})`);
@@ -246,11 +252,16 @@ export default function FaqManager({
     if (!confirm(`Delete FAQ #${id}? This cannot be undone.`)) return;
     try {
       setDeletingId(id);
-      const res = await fetch(`${apiBase}/api/faqs/${id}`, {
+
+      // ✅ CSRF-aware wrapper for DELETE
+      const res = await fetchWithCsrf(`${apiBase}/api/faqs/${id}`, {
         method: "DELETE",
-        credentials: "include",
       });
-      if (!res.ok) throw new Error(`Failed to delete (#${id})`);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to delete (#${id})`);
+      }
       setItems((prev) => prev.filter((c) => c.id !== id));
     } catch (error: any) {
       alert(error?.message ?? "Could not delete FAQ");
@@ -264,7 +275,7 @@ export default function FaqManager({
   /* -------- Render -------- */
   return (
     <div className="rounded-[28px] md:rounded-[36px] bg-gray-100/70 p-6 md:p-10">
-      <div className="max-w-[980px] mx-auto bg-white rounded-[24px] shadow-sm ring-1 ring-black/5 overflow-hidden">
+      <div className="max-w<[980px] mx-auto bg-white rounded-[24px] shadow-sm ring-1 ring-black/5 overflow-hidden">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-5 md:px-7 py-5 border-b">
           <div>
