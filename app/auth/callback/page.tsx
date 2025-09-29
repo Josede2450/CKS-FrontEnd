@@ -1,6 +1,8 @@
 "use client";
 
-export const dynamic = "force-dynamic"; // ⬅️ disables prerendering
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,6 +15,7 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const ac = new AbortController();
+
     (async () => {
       try {
         const me = await fetchWithCsrf(`${apiBase}/api/auth/me`, {
@@ -28,6 +31,7 @@ export default function AuthCallback() {
         router.replace("/login?error=oauth");
       }
     })();
+
     return () => ac.abort();
   }, [router, search, apiBase]);
 
