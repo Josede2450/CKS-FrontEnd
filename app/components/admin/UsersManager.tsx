@@ -195,16 +195,17 @@ const GENDER_OPTIONS = ["Male", "Female"] as const;
 type GenderOption = (typeof GENDER_OPTIONS)[number];
 
 export default function UsersManager({
-  apiBase,
   pageSize = 10,
   heading = "Users",
   pollMs = 0,
 }: {
-  apiBase: string;
   pageSize?: number;
   heading?: string;
   pollMs?: number;
 }) {
+  // ✅ take apiBase from env
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
+
   // table state
   const [items, setItems] = useState<CanonUser[]>([]);
   const [page, setPage] = useState(0);

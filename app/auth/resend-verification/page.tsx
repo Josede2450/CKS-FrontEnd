@@ -21,6 +21,8 @@ export default function ResendVerificationPage() {
   );
   const abortRef = useRef<AbortController | null>(null);
 
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
   // Pre-fill from ?email=foo@bar.com
   useEffect(() => {
     const q = searchParams.get("email");
@@ -48,12 +50,15 @@ export default function ResendVerificationPage() {
 
     try {
       // ✅ use wrapper instead of manual CSRF
-      const res = await fetchWithCsrf("/api/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: abortRef.current.signal,
-      });
+      const res = await fetchWithCsrf(
+        `${apiBase}/api/auth/resend-verification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: abortRef.current.signal,
+        }
+      );
 
       const data = await res
         .json()

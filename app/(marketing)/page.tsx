@@ -73,6 +73,8 @@ const isPopular = (s: Svc) => {
 };
 
 export default function HomePage() {
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!; // ✅ env base URL
+
   /* ---------------- Testimonials ---------------- */
   const [favorites, setFavorites] = useState<ViewTestimonial[]>([]);
   const [index, setIndex] = useState(0);
@@ -81,8 +83,8 @@ export default function HomePage() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/testimonials?favorite=true&sort=createdAt,desc`,
-          { cache: "no-store" }
+          `${apiBase}/api/testimonials?favorite=true&sort=createdAt,desc`,
+          { cache: "no-store", credentials: "include" }
         );
         if (!res.ok) throw new Error("Failed to fetch testimonials");
         const data = await res.json();
@@ -92,7 +94,7 @@ export default function HomePage() {
         setFavorites([]);
       }
     })();
-  }, []);
+  }, [apiBase]);
 
   function next() {
     setIndex((i) => (i + 1) % (favorites.length || 1));
@@ -157,9 +159,12 @@ export default function HomePage() {
         setSvcLoading(true);
         setSvcErr(null);
 
-        const res = await fetch(`/api/services?size=24&popular=true`, {
-          credentials: "include",
-        });
+        const res = await fetch(
+          `${apiBase}/api/services?size=24&popular=true`,
+          {
+            credentials: "include",
+          }
+        );
         if (!res.ok)
           throw new Error((await res.text()) || `Failed ${res.status}`);
 
@@ -175,14 +180,14 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [apiBase]);
 
   const popularOnly = useMemo(() => services.filter(isPopular), [services]);
 
   async function openModal(s: Svc) {
     const id = getId(s);
     try {
-      const res = await fetch(`/api/services/${id}`, {
+      const res = await fetch(`${apiBase}/api/services/${id}`, {
         credentials: "include",
       });
       if (res.ok) {
@@ -261,7 +266,7 @@ export default function HomePage() {
               We make it possible
             </p>
 
-            {/* Brush (kept small so it never pushes the text) */}
+            {/* Brush */}
             <div className="w-20 sm:w-28 md:w-40 mx-auto md:mx-0">
               <Image
                 src={heroSignature}
@@ -276,7 +281,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* HERO PILL */}
+      {/* ===== HERO PILL ===== */}
       <section
         className="w-full rounded-[50px]"
         style={{
@@ -296,7 +301,6 @@ export default function HomePage() {
               priority
             />
 
-            {/* Badge */}
             <div
               className="inline-block mb-3 rounded-full px-4 py-1 text-xs md:text-sm text-white font-semibold tracking-wide shadow-sm"
               style={{
@@ -368,7 +372,6 @@ export default function HomePage() {
                 priority
               />
 
-              {/* Badge */}
               <div
                 className="inline-block mb-3 rounded-full px-4 py-1 text-xs md:text-sm text-white font-semibold tracking-wide shadow-sm"
                 style={{
@@ -401,7 +404,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ===== SERVICES + MOST POPULAR ===== */}
+      {/* ===== SERVICES ===== */}
       <section
         className="w-full rounded-[50px] mt-12 md:mt-16 overflow-hidden"
         style={{
@@ -473,7 +476,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+      {/* ===== TESTIMONIALS ===== */}
       <section
         className="w-full mt-14 md:mt-16 mb-16 relative rounded-[50px] overflow-hidden"
         style={{

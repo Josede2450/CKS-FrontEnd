@@ -49,12 +49,18 @@ export default function FAQPage() {
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [query, setQuery] = useState("");
 
+  // ✅ Centralize API base (env or localhost fallback)
+  const apiBase = (
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+  ).replace(/\/+$/, "");
+
   // Fetch FAQs
   useEffect(() => {
     async function loadFaqs() {
       try {
-        const res = await fetch(`/api/faqs`, {
+        const res = await fetch(`${apiBase}/api/faqs`, {
           headers: { Accept: "application/json" },
+          credentials: "include",
         });
         if (!res.ok) throw new Error("Failed to fetch FAQs");
         const data = await res.json();
@@ -64,7 +70,7 @@ export default function FAQPage() {
       }
     }
     loadFaqs();
-  }, []);
+  }, [apiBase]);
 
   // Filter
   const filtered = useMemo(() => {

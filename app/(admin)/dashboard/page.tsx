@@ -23,6 +23,7 @@ type Me = {
   lastName?: string | null;
 };
 
+// Centralized API base (no need to pass down anymore)
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export default function DashboardPage() {
@@ -36,14 +37,14 @@ export default function DashboardPage() {
 
     (async () => {
       try {
-        // 1) Prime CSRF cookie with a public GET that is NOT CSRF-ignored
+        // 1) Prime CSRF cookie with a public GET
         await fetch(`${API}/api/services?ts=${Date.now()}`, {
           credentials: "include",
           cache: "no-store",
           signal: ac.signal,
         });
 
-        // 2) Check current user (no cache; include cookies)
+        // 2) Check current user
         const res = await fetch(`${API}/api/auth/me`, {
           credentials: "include",
           cache: "no-store",
@@ -65,7 +66,6 @@ export default function DashboardPage() {
           [data.role, ...(data.roles ?? [])].filter(Boolean) as string[]
         );
 
-        // 3) Normalize: accept "ROLE_ADMIN" or "ADMIN"
         const isAdmin = [...rolesSet].some(
           (r) => r?.toUpperCase().replace(/^ROLE_/, "") === "ADMIN"
         );
@@ -109,32 +109,32 @@ export default function DashboardPage() {
         </h1>
 
         {/* Contact Messages */}
-        <ContactMessages apiBase={API} pageSize={8} />
+        <ContactMessages pageSize={8} />
 
         <div className="h-12" />
 
         {/* Categories Manager */}
-        <CategoryManager apiBase={API} pageSize={10} />
+        <CategoryManager pageSize={10} />
 
         <div className="h-12" />
 
         {/* Services Manager */}
-        <ServicesManager apiBase={API} pageSize={8} pollMs={15000} />
+        <ServicesManager pageSize={8} pollMs={15000} />
 
         <div className="h-12" />
 
         {/* Testimonials Manager */}
-        <TestimonialsManager apiBase={API} pageSize={8} pollMs={15000} />
+        <TestimonialsManager pageSize={8} pollMs={15000} />
 
         <div className="h-12" />
 
         {/* Users Manager */}
-        <UsersManager apiBase={API} pageSize={8} pollMs={15000} />
+        <UsersManager pageSize={8} pollMs={15000} />
 
         <div className="h-12" />
 
         {/* FAQs Manager */}
-        <FaqManager apiBase={API} pageSize={8} />
+        <FaqManager pageSize={8} />
       </section>
 
       <div className="h-16 md:h-24" />

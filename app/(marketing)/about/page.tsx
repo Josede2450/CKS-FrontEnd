@@ -6,13 +6,11 @@ import Image from "next/image";
 // images (put under /public/images)
 import leftFace from "../../public/images/LeftFace.jpg";
 import brain from "../../public/images/brain.jpg";
-import signature from "../../public/images/signature.png";
 import heroSignature from "../../public/images/HeroSignature.svg"; // tagline
 import computer from "../../public/images/computer.jpg";
 
 export default function AboutPage() {
   return (
-    // ⬇️ prevent any accidental horizontal scroll
     <main className="bg-white overflow-x-clip">
       {/* spacer for fixed nav if you have one */}
       <div className="h-12 md:h-16" />
@@ -22,11 +20,11 @@ export default function AboutPage() {
         <div className="mx-auto w-full max-w-[1200px]">
           <div
             className="
-        grid grid-cols-1 md:grid-cols-[auto_auto]
-        justify-center items-center
-        gap-3 md:gap-8
-        text-center md:text-left
-      "
+              grid grid-cols-1 md:grid-cols-[auto_auto]
+              justify-center items-center
+              gap-3 md:gap-8
+              text-center md:text-left
+            "
           >
             {/* Tagline text */}
             <p className="text-2xl md:text-4xl text-gray-900 italic mx-auto md:mx-0">
@@ -50,7 +48,7 @@ export default function AboutPage() {
 
       {/* ===== Top gradient panel (edge-to-edge with rounded 50px) ===== */}
       <section
-        className="w-full overflow-hidden px-6 md:px-10 py-10 md:py-14 rounded-[50px] md:h-[450px] relative"
+        className="w-full overflow-hidden px-6 md:px-10 py-10 md:py-14 rounded-[50px] md:h-[450px] relative mt-10"
         style={{
           background: "linear-gradient(140deg,#2BD879 0%, #052C48 100%)",
         }}
@@ -232,9 +230,7 @@ export default function AboutPage() {
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-[320px_1fr] gap-10 items-center text-center md:text-left">
             {/* image left */}
             <div className="relative flex justify-center md:justify-start">
-              {/* subtle decorative blob */}
               <div className="absolute -top-6 -left-6 h-24 w-24 rounded-full bg-white/20 blur-xl" />
-              {/* image card */}
               <div className="relative bg-white/20 backdrop-blur-md rounded-3xl p-2 shadow-[0_12px_30px_rgba(0,0,0,0.25)] ring-1 ring-white/30">
                 <div className="overflow-hidden rounded-2xl w-[240px] h-[320px] md:w-[300px] md:h-[380px]">
                   <Image
@@ -244,7 +240,6 @@ export default function AboutPage() {
                     priority
                   />
                 </div>
-                {/* corner accent */}
                 <span className="pointer-events-none absolute -right-2 -bottom-2 h-10 w-10 rounded-full bg-white/30" />
               </div>
             </div>
@@ -261,7 +256,7 @@ export default function AboutPage() {
                 from concept to launch and beyond — making us your trusted
                 partner in digital transformation.
               </p>
-              {/* mini highlights */}
+
               <ul className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm md:text-base text-white/90">
                 <li className="flex items-center justify-center md:justify-start gap-2">
                   <svg
@@ -313,7 +308,6 @@ export default function AboutPage() {
                 </li>
               </ul>
 
-              {/* CTA */}
               <div className="mt-6 flex justify-center md:justify-start w-full">
                 <a
                   href="/services"

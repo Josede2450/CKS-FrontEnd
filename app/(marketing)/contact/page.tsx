@@ -1,3 +1,4 @@
+// app/contact/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -96,6 +97,7 @@ export default function ContactPage() {
                 </a>
               </div>
 
+              {/* Styled image */}
               <div className="relative bg-black/10 backdrop-blur-md border border-black/20 rounded-2xl shadow-xl p-2 mt-4">
                 <div className="overflow-hidden rounded-xl w-[200px] h-[140px] md:w-[300px] md:h-[270px]">
                   <Image

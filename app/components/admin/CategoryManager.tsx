@@ -2,18 +2,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-
-// ✅ use the wrapper via a relative import (no aliases)
 import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 /* ========= Types ========= */
-
 export type Category = {
-  // tolerant id keys
   category_id?: number;
   categoryId?: number;
   id?: number;
-
   name: string;
   slug: string;
 };
@@ -29,7 +24,6 @@ export type Page<T> = {
 };
 
 /* ========= Small UI helpers ========= */
-
 function Spinner() {
   return (
     <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-transparent" />
@@ -99,7 +93,6 @@ function IconButton({
 }
 
 /* ========= Helpers ========= */
-
 const getId = (c: Category) => c.category_id ?? c.categoryId ?? c.id ?? null;
 
 function slugify(input: string) {
@@ -114,16 +107,16 @@ function slugify(input: string) {
 }
 
 /* ========= Component ========= */
-
 export default function CategoryManager({
-  apiBase,
   pageSize = 10,
   heading = "Categories",
 }: {
-  apiBase: string;
   pageSize?: number;
   heading?: string;
 }) {
+  // ✅ always get API base from env
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
+
   // table state
   const [items, setItems] = useState<Category[]>([]);
   const [page, setPage] = useState(0);
@@ -197,10 +190,9 @@ export default function CategoryManager({
     return () => {
       cancelled = true;
     };
-  }, [apiBase, page, q, pageSize, refreshKey]); // ⬅️ refresh when refreshKey changes
+  }, [apiBase, page, q, pageSize, refreshKey]);
 
   /* ====== CRUD helpers ====== */
-
   function openCreate() {
     setForm({ name: "", slug: "" });
     setCreating(true);
@@ -218,7 +210,6 @@ export default function CategoryManager({
         alert("Name is required");
         return;
       }
-      // If slug empty, auto-generate from name
       const finalSlug = form.slug.trim() || slugify(form.name);
 
       const payload = {
@@ -232,7 +223,6 @@ export default function CategoryManager({
         ? `${apiBase}/api/categories/${idForEdit}`
         : `${apiBase}/api/categories`;
 
-      // ✅ CSRF-aware wrapper
       const res = await fetchWithCsrf(url, {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -249,11 +239,10 @@ export default function CategoryManager({
         );
       }
 
-      // Close modal and force a list reload
       setCreating(false);
       setEditing(null);
       setPage(0);
-      doRefresh(); // ⬅️ refresh the table immediately
+      doRefresh();
     } catch (e: any) {
       alert(e?.message ?? "Could not save");
     } finally {
@@ -265,17 +254,13 @@ export default function CategoryManager({
     if (!confirm(`Delete category #${idLike}? This cannot be undone.`)) return;
     try {
       setDeletingId(idLike);
-
-      // ✅ CSRF-aware wrapper
       const res = await fetchWithCsrf(`${apiBase}/api/categories/${idLike}`, {
         method: "DELETE",
       });
-
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Failed to delete (#${idLike})`);
       }
-      // optimistic
       setItems((prev) => prev.filter((c) => getId(c) !== idLike));
     } catch (error: any) {
       alert(
@@ -290,7 +275,6 @@ export default function CategoryManager({
   const sub = useMemo(() => "Alphabetical by name", []);
 
   /* ====== UI ====== */
-
   return (
     <div className="rounded-[28px] md:rounded-[36px] bg-gray-100/70 p-6 md:p-10">
       <div className="max-w-[980px] mx-auto bg-white rounded-[24px] shadow-sm ring-1 ring-black/5 overflow-hidden">
@@ -452,7 +436,6 @@ export default function CategoryManager({
                 setForm((f) => ({
                   ...f,
                   name: e.target.value,
-                  // if the user hasn't touched slug, live-update it
                   slug:
                     f.slug.trim().length === 0
                       ? slugify(e.target.value)

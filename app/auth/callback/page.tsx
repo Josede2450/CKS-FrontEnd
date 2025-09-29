@@ -7,6 +7,7 @@ import { fetchWithCsrf } from "../../lib/fetchWithCsrf"; // ✅ reuse wrapper
 export default function AuthCallback() {
   const router = useRouter();
   const search = useSearchParams();
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
 
   useEffect(() => {
     const ac = new AbortController();
@@ -14,7 +15,7 @@ export default function AuthCallback() {
     (async () => {
       try {
         // ✅ no need to manually prime; wrapper will ensure CSRF token exists
-        const me = await fetchWithCsrf("/api/auth/me", {
+        const me = await fetchWithCsrf(`${apiBase}/api/auth/me`, {
           credentials: "include",
           cache: "no-store",
           signal: ac.signal,
@@ -29,7 +30,7 @@ export default function AuthCallback() {
     })();
 
     return () => ac.abort();
-  }, [router, search]);
+  }, [router, search, apiBase]);
 
   return <p className="p-6 text-sm text-gray-600">Signing you in…</p>;
 }

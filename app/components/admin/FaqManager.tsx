@@ -2,16 +2,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-
-// ✅ CSRF-aware fetch (relative import, no aliases)
 import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 /* ============== Types ============== */
 export type Faq = {
-  id: number; // mapped from id || faq_id || faqId
+  id: number;
   question: string;
   answer: string;
-  // category?: string; // enable later if your API exposes it
 };
 
 export type Page<T> = {
@@ -101,14 +98,15 @@ function IconButton({
 
 /* ============== Main Component ============== */
 export default function FaqManager({
-  apiBase,
   pageSize = 8,
   heading = "FAQs",
 }: {
-  apiBase: string;
   pageSize?: number;
   heading?: string;
 }) {
+  // ✅ centralized backend URL
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
+
   // table state
   const [items, setItems] = useState<Faq[]>([]);
   const [page, setPage] = useState(0);
@@ -143,7 +141,6 @@ export default function FaqManager({
         if (q.trim()) url.searchParams.set("q", q.trim());
         url.searchParams.set("page", String(page));
         url.searchParams.set("size", String(pageSize));
-        // DO NOT set sort — your table has no createdAt and PK is faq_id
 
         const res = await fetch(url.toString(), {
           credentials: "include",
@@ -152,7 +149,6 @@ export default function FaqManager({
         if (!res.ok) throw new Error(`Failed ${res.status}`);
         const json = (await res.json()) as Page<any>;
 
-        // Map id defensively: API might return id, faq_id, or faqId
         const content: Faq[] = (json.content ?? []).map((f: any) => ({
           id: f.id ?? f.faq_id ?? f.faqId,
           question: f.question,
@@ -200,14 +196,12 @@ export default function FaqManager({
           ? `${apiBase}/api/faqs`
           : `${apiBase}/api/faqs/${editing.id}`;
 
-      // ✅ CSRF-aware wrapper for POST/PUT
       const res = await fetchWithCsrf(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: editing.question?.trim(),
           answer: editing.answer?.trim(),
-          // category: editing.category?.trim() || undefined,
         }),
       });
 
@@ -216,7 +210,6 @@ export default function FaqManager({
         throw new Error(text || `Failed to save (status ${res.status})`);
       }
       const json = await res.json();
-      // controller returns { message, faq } for POST/PUT
       const saved: Faq = json.faq
         ? {
             id: json.faq.id ?? json.faq.faq_id ?? json.faq.faqId,
@@ -229,7 +222,6 @@ export default function FaqManager({
             answer: json.answer,
           };
 
-      // optimistic update
       setItems((prev) => {
         const idx = prev.findIndex((x) => x.id === saved.id);
         if (idx >= 0) {
@@ -252,12 +244,9 @@ export default function FaqManager({
     if (!confirm(`Delete FAQ #${id}? This cannot be undone.`)) return;
     try {
       setDeletingId(id);
-
-      // ✅ CSRF-aware wrapper for DELETE
       const res = await fetchWithCsrf(`${apiBase}/api/faqs/${id}`, {
         method: "DELETE",
       });
-
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Failed to delete (#${id})`);
@@ -275,7 +264,7 @@ export default function FaqManager({
   /* -------- Render -------- */
   return (
     <div className="rounded-[28px] md:rounded-[36px] bg-gray-100/70 p-6 md:p-10">
-      <div className="max-w<[980px] mx-auto bg-white rounded-[24px] shadow-sm ring-1 ring-black/5 overflow-hidden">
+      <div className="max-w-[980px] mx-auto bg-white rounded-[24px] shadow-sm ring-1 ring-black/5 overflow-hidden">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-5 md:px-7 py-5 border-b">
           <div>
@@ -321,7 +310,6 @@ export default function FaqManager({
                   </td>
                 </tr>
               )}
-
               {err && !loading && (
                 <tr>
                   <td
@@ -332,7 +320,6 @@ export default function FaqManager({
                   </td>
                 </tr>
               )}
-
               {!loading && !err && items.length === 0 && (
                 <tr>
                   <td
@@ -343,7 +330,6 @@ export default function FaqManager({
                   </td>
                 </tr>
               )}
-
               {!loading &&
                 !err &&
                 items.map((f) => (
@@ -407,7 +393,6 @@ export default function FaqManager({
           <h3 className="text-lg font-semibold">
             {editing?.id && editing.id !== 0 ? "Edit FAQ" : "Create FAQ"}
           </h3>
-
           <div className="space-y-1">
             <label className="text-sm font-medium">Question</label>
             <input
@@ -422,7 +407,6 @@ export default function FaqManager({
               placeholder="e.g., How do I reset my password?"
             />
           </div>
-
           <div className="space-y-1">
             <label className="text-sm font-medium">Answer</label>
             <textarea
@@ -438,7 +422,6 @@ export default function FaqManager({
               placeholder="Provide a clear, concise answer…"
             />
           </div>
-
           <div className="flex items-center justify-end gap-2 pt-2">
             <IconButton title="Cancel" onClick={() => setEditing(null)}>
               Cancel

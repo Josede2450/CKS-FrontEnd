@@ -25,11 +25,14 @@ function getCsrfToken(): string | null {
 }
 
 /** Ensure CSRF cookie exists by hitting a public GET that passes CsrfFilter */
-async function ensureCsrfToken(): Promise<string | null> {
+async function ensureCsrfToken(apiBase: string): Promise<string | null> {
   let t = getCsrfToken();
   if (t) return t;
   try {
-    await fetch("/api/services", { credentials: "include", cache: "no-store" });
+    await fetch(`${apiBase}/api/services`, {
+      credentials: "include",
+      cache: "no-store",
+    });
   } catch {
     // ignore; we'll re-check
   }
@@ -38,6 +41,7 @@ async function ensureCsrfToken(): Promise<string | null> {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -139,9 +143,9 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       // 🔐 Ensure CSRF cookie, then include token + session
-      const token = (await ensureCsrfToken()) ?? "";
+      const token = (await ensureCsrfToken(apiBase)) ?? "";
 
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch(`${apiBase}/api/auth/register`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -157,7 +161,6 @@ export default function RegisterPage() {
       });
 
       if (res.ok) {
-        // pass a flag & email so /login shows success banner & pre-fills
         const emailParam = encodeURIComponent(form.email.trim());
         router.push(`/login?status=verification_sent&email=${emailParam}`);
         return;
@@ -178,7 +181,6 @@ export default function RegisterPage() {
   }
 
   function onGoogleClick() {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
     const nextUrl = `${window.location.origin}/auth/callback`;
     const url = `${apiBase}/api/auth/login/google?next=${encodeURIComponent(
       nextUrl

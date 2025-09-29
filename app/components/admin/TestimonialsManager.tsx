@@ -24,7 +24,7 @@ interface ApiRow {
   quote?: string | null; // UI alias (fallback)
   createdAt?: string | null;
   user?: ApiUser | null;
-  favorite?: boolean | null; // <-- renamed server boolean
+  favorite?: boolean | null;
 }
 
 interface PageResp<T> {
@@ -39,12 +39,12 @@ interface PageResp<T> {
 
 type CanonTestimonial = {
   id: number | null;
-  quote: string | null; // shown in table
+  quote: string | null;
   createdAt: string | null;
   userId: number | null;
   firstName: string | null;
   lastName: string | null;
-  favorite: boolean; // <-- canonical boolean
+  favorite: boolean;
 };
 
 function normalize(row: ApiRow): CanonTestimonial {
@@ -83,11 +83,7 @@ function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="absolute inset-0 grid place-items-center p-4">
         <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl">
           {children}
@@ -136,17 +132,17 @@ function IconButton({
 /* ================== Component ================== */
 
 export default function TestimonialsManager({
-  apiBase,
   pageSize = 8,
   heading = "Testimonials",
   pollMs = 0,
 }: {
-  apiBase: string;
   pageSize?: number;
   heading?: string;
   pollMs?: number;
 }) {
-  // table state
+  // ✅ Use env var instead of prop
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
+
   const [items, setItems] = useState<CanonTestimonial[]>([]);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
@@ -160,13 +156,11 @@ export default function TestimonialsManager({
     last: true,
   });
 
-  // mutation state
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editing, setEditing] = useState<CanonTestimonial | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // form
   const [form, setForm] = useState<{
     quote: string;
     userId: string;
@@ -177,7 +171,6 @@ export default function TestimonialsManager({
     favorite: false,
   });
 
-  // refresh key & polling
   const [refreshKey, setRefreshKey] = useState(0);
   const doRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -231,7 +224,6 @@ export default function TestimonialsManager({
     return () => clearInterval(id);
   }, [pollMs]);
 
-  // actions
   function openCreate() {
     setForm({ quote: "", userId: "", favorite: false });
     setCreating(true);
@@ -249,7 +241,6 @@ export default function TestimonialsManager({
     try {
       setSaving(true);
 
-      // backend expects: { content, favorite, user:{ userId } }
       const payload: any = { content: form.quote, favorite: !!form.favorite };
       if (form.userId) payload.user = { userId: Number(form.userId) };
 
@@ -258,7 +249,6 @@ export default function TestimonialsManager({
         ? `${apiBase}/api/testimonials/${editing!.id}`
         : `${apiBase}/api/testimonials`;
 
-      // ✅ CSRF-aware wrapper for POST/PUT
       const res = await fetchWithCsrf(url, {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -283,23 +273,17 @@ export default function TestimonialsManager({
     }
   }
 
-  // favorite toggle from table (many allowed)
   async function toggleFavorite(t: CanonTestimonial) {
     if (t.id == null) return;
 
-    // optimistic UI
     setItems((prev) =>
       prev.map((it) => (it.id === t.id ? { ...it, favorite: !t.favorite } : it))
     );
 
     try {
-      const payload: any = {
-        content: t.quote ?? "",
-        favorite: !t.favorite,
-      };
+      const payload: any = { content: t.quote ?? "", favorite: !t.favorite };
       if (t.userId != null) payload.user = { userId: t.userId };
 
-      // ✅ CSRF-aware wrapper for PUT
       const res = await fetchWithCsrf(`${apiBase}/api/testimonials/${t.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -312,7 +296,6 @@ export default function TestimonialsManager({
 
       doRefresh();
     } catch (e: any) {
-      // rollback on error
       setItems((prev) =>
         prev.map((it) =>
           it.id === t.id ? { ...it, favorite: t.favorite } : it
@@ -328,7 +311,6 @@ export default function TestimonialsManager({
     try {
       setDeletingId(id);
 
-      // ✅ CSRF-aware wrapper for DELETE
       const res = await fetchWithCsrf(`${apiBase}/api/testimonials/${id}`, {
         method: "DELETE",
       });

@@ -10,6 +10,9 @@ import Image from "next/image";
 const CHUNK_SIZE = 9;
 const FETCH_SIZE = 100;
 
+// 👇 Use env var if provided, otherwise same-origin
+const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
+
 type CategoryMini = { name?: string; slug?: string };
 
 type Svc = {
@@ -58,9 +61,7 @@ type Category = {
   slug?: string;
 };
 
-// NOTE: Use same-origin /api proxy so cookies/CSRF work automatically
-// (Make sure you have a Next.js rewrite from /api/* -> backend /api/*)
-
+// Helpers
 const getId = (s: Svc) => s.service_id ?? s.serviceId ?? s.id!;
 const getImg = (s: Svc) => s.imageUrl ?? s.image_url ?? undefined;
 const getCatId = (c: Category) => c.category_id ?? c.categoryId ?? c.id;
@@ -118,7 +119,7 @@ export default function ServicesPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sortKey, setSortKey] = useState<SortKey>("popular");
 
-  // Fetch categories (first-party /api for same-origin cookies)
+  // Fetch categories
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -126,7 +127,7 @@ export default function ServicesPage() {
         setCatsLoading(true);
         setCatsErr(null);
 
-        const url = new URL(`/api/categories`, window.location.origin);
+        const url = new URL(`${apiBase}/api/categories`);
         url.searchParams.set("page", "0");
         url.searchParams.set("size", "200");
         url.searchParams.set("sort", "name,asc");
@@ -153,14 +154,12 @@ export default function ServicesPage() {
     };
   }, []);
 
-  // Fetch all services (paged) via /api proxy
+  // Fetch services
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       setLoading(true);
       setErr(null);
-
       setGridPage(0);
       setListPage(0);
 
@@ -168,7 +167,7 @@ export default function ServicesPage() {
         const aggregated: Svc[] = [];
         const MAX_PAGES = 100;
         for (let page = 0; page < MAX_PAGES; page++) {
-          const url = new URL(`/api/services`, window.location.origin);
+          const url = new URL(`${apiBase}/api/services`);
           if (q.trim()) url.searchParams.set("q", q.trim());
           if (selectedCategorySlug.trim())
             url.searchParams.set("category", selectedCategorySlug.trim());
@@ -180,7 +179,6 @@ export default function ServicesPage() {
             throw new Error((await res.text()) || `Failed ${res.status}`);
 
           const raw = await res.json();
-
           if (Array.isArray(raw)) {
             aggregated.push(...(raw as Svc[]));
             break;
@@ -190,25 +188,20 @@ export default function ServicesPage() {
           const batch = pageObj.content ?? [];
           aggregated.push(...batch);
 
-          const isLastFlag = pageObj.last === true;
-          const hasTotalPages =
-            typeof pageObj.totalPages === "number" && pageObj.totalPages > 0;
-          const reachedTotalPages =
-            hasTotalPages && page + 1 >= pageObj.totalPages;
-          const shortPage = batch.length < FETCH_SIZE;
-
-          if (isLastFlag || reachedTotalPages || shortPage) break;
+          if (
+            pageObj.last ||
+            (pageObj.totalPages && page + 1 >= pageObj.totalPages) ||
+            batch.length < FETCH_SIZE
+          )
+            break;
         }
-
         if (!cancelled) setAllData(aggregated);
       } catch (e: any) {
         if (!cancelled) setErr(e?.message ?? "Failed to load services");
-        console.error("Fetch-all services failed:", e);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-
     return () => {
       cancelled = true;
     };
@@ -222,7 +215,7 @@ export default function ServicesPage() {
   async function openModal(s: Svc) {
     const id = getId(s);
     try {
-      const res = await fetch(`/api/services/${id}`, {
+      const res = await fetch(`${apiBase}/api/services/${id}`, {
         credentials: "include",
       });
       if (res.ok) {
@@ -284,7 +277,6 @@ export default function ServicesPage() {
   const sortedContent = useMemo(() => {
     if (!content) return [];
     const copy = [...content];
-
     if (sortKey === "popular") {
       copy.sort((a, b) => {
         const ap = isPopular(a) ? 1 : 0;
@@ -296,14 +288,12 @@ export default function ServicesPage() {
       });
       return copy;
     }
-
     if (sortKey === "title_asc") {
       return copy.sort((a, b) => (a.title ?? "").localeCompare(b.title ?? ""));
     }
     if (sortKey === "title_desc") {
       return copy.sort((a, b) => (b.title ?? "").localeCompare(a.title ?? ""));
     }
-
     return copy;
   }, [content, sortKey]);
 
@@ -330,7 +320,6 @@ export default function ServicesPage() {
       : Math.min((listPage + 1) * CHUNK_SIZE, sortedContent.length);
 
   return (
-    // ⬇️ This clips any horizontal overflow from edge-to-edge sections
     <main className="bg-white overflow-x-clip mt-12 px-4">
       {/* TOP TAGLINE */}
       <section className="px-0 mt-12">
@@ -560,7 +549,7 @@ export default function ServicesPage() {
 
             {!loading && !err && sortedContent.length > 0 && (
               <>
-                {/* Grid view — paged */}
+                {/* Grid view */}
                 {view === "grid" && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
@@ -614,7 +603,7 @@ export default function ServicesPage() {
                   </>
                 )}
 
-                {/* List view — paged */}
+                {/* List view */}
                 {view === "list" && (
                   <>
                     <div className="flex flex-col divide-y rounded-2xl border overflow-hidden">

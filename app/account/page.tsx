@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchWithCsrf } from "../lib/fetchWithCsrf";
 
 type CurrentUser = {
   authenticated?: boolean;
@@ -11,29 +12,8 @@ type CurrentUser = {
   firstName?: string;
   lastName?: string | null;
   phone?: string | null;
-  picture?: string | null; // MeDto.picture (avatarUrl or google picture)
+  picture?: string | null;
 };
-
-/** Read the XSRF-TOKEN cookie set by Spring Security */
-function getCsrfToken(): string | null {
-  const m =
-    typeof document !== "undefined"
-      ? document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/)
-      : null;
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
-/** Ensure the CSRF cookie exists (hit a public GET that goes through CsrfFilter) */
-async function ensureCsrfToken(): Promise<string | null> {
-  let t = getCsrfToken();
-  if (t) return t;
-  try {
-    await fetch("/api/services", { credentials: "include", cache: "no-store" });
-  } catch {
-    // ignore; we only care if the cookie gets set
-  }
-  return getCsrfToken();
-}
 
 function ReadonlyRow({
   label,
@@ -113,6 +93,7 @@ function EditRow({
 
 export default function AccountPage() {
   const router = useRouter();
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
 
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,7 +118,7 @@ export default function AccountPage() {
     setPhoneDigits(digits);
 
     if (trimmed === "") {
-      setPhoneError(null); // optional field
+      setPhoneError(null); // optional
       return true;
     }
     if (!phoneAllowedChars(trimmed)) {
@@ -154,13 +135,12 @@ export default function AccountPage() {
     return true;
   };
 
-  // ---- prime CSRF cookie once, then load Me ----
+  // ---- load Me ----
   useEffect(() => {
     const ac = new AbortController();
     (async () => {
       try {
-        await ensureCsrfToken(); // make sure XSRF-TOKEN cookie exists
-        const res = await fetch(`/api/users/me`, {
+        const res = await fetchWithCsrf(`${apiBase}/api/users/me`, {
           credentials: "include",
           headers: { Accept: "application/json" },
           cache: "no-store",
@@ -197,15 +177,14 @@ export default function AccountPage() {
       }
     })();
     return () => ac.abort();
-  }, [router]);
+  }, [router, apiBase]);
 
-  // validate live while editing
+  // validate while editing
   useEffect(() => {
     if (editing) validatePhone(phone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone, editing]);
 
-  // initials fallback (if no image)
   const initials = useMemo(() => {
     const fi = (me?.firstName ?? "").trim().charAt(0).toUpperCase();
     const li = (me?.lastName ?? "").trim().charAt(0).toUpperCase();
@@ -240,17 +219,13 @@ export default function AccountPage() {
     setErr(null);
 
     try {
-      // 🔐 Make sure CSRF cookie exists and include header
-      const token = (await ensureCsrfToken()) ?? "";
-
-      const res = await fetch(`/api/users/me`, {
+      const res = await fetchWithCsrf(`${apiBase}/api/users/me`, {
         method: "PUT",
         credentials: "include",
         cache: "no-store",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          "X-XSRF-TOKEN": token,
         },
         body: JSON.stringify({ firstName, lastName, phone }),
       });
@@ -283,7 +258,7 @@ export default function AccountPage() {
         } (allowed: ${PHONE_MIN}–${PHONE_MAX})`
       : null;
 
-  const saveDisabled = false || (editing && phoneError !== null);
+  const saveDisabled = editing && phoneError !== null;
 
   return (
     <main className="min-h-screen bg-white">
@@ -294,7 +269,7 @@ export default function AccountPage() {
 
         <div className="mx-auto max-w-[680px] rounded-[28px] border border-zinc-200 bg-white shadow-sm">
           <div className="px-6 py-8 md:py-10">
-            {/* Avatar (read-only, non-interactive) */}
+            {/* Avatar */}
             <div className="mb-6 flex justify-center">
               <div
                 className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-zinc-100 ring-1 ring-zinc-200 md:h-28 md:w-28"

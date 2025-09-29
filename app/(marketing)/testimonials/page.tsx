@@ -58,6 +58,8 @@ export default function TestimonialsPage() {
   const [idx, setIdx] = useState(0);
   const [fading, setFading] = useState(false);
 
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
   // Normalize API -> view model
   function normalize(api: ApiTestimonial | undefined): ViewTestimonial | null {
     if (!api) return null;
@@ -113,7 +115,7 @@ export default function TestimonialsPage() {
       setLoading(true);
       setErr(null);
       try {
-        const url = `/api/testimonials?size=50&sort=createdAt,desc`;
+        const url = `${apiBase}/api/testimonials?size=50&sort=createdAt,desc`;
 
         const res = await fetch(url, {
           credentials: "include",
@@ -146,7 +148,7 @@ export default function TestimonialsPage() {
     return () => {
       cancelled = true;
     };
-  }, []); // ← no API env dependency; we use relative /api/ now
+  }, [apiBase]);
 
   const current = useMemo(
     () =>
@@ -193,7 +195,7 @@ export default function TestimonialsPage() {
         </div>
       </section>
 
-      {/* ===== Hero Testimonials (edge-to-edge, gold gradient, centered BlockHead crystal) ===== */}
+      {/* ===== Hero Testimonials ===== */}
       <section
         className="relative w-screen left-1/2 -translate-x-1/2 h-[450px] rounded-[50px] overflow-hidden mt-20"
         style={{
@@ -202,7 +204,7 @@ export default function TestimonialsPage() {
         }}
       >
         <div className="mx-auto w-full max-w-[1200px] h-full flex flex-col md:flex-row items-center justify-center gap-10 px-6 md:px-10">
-          {/* LEFT CONTENT (centered) */}
+          {/* LEFT CONTENT */}
           <div className="flex flex-col items-center text-center text-black gap-4">
             <h2 className="text-2xl md:text-3xl italic font-bold">
               Testimonials
@@ -225,7 +227,7 @@ export default function TestimonialsPage() {
             </p>
           </div>
 
-          {/* RIGHT IMAGE (smaller crystal style) */}
+          {/* RIGHT IMAGE */}
           <div className="flex justify-center">
             <div className="relative bg-black/10 backdrop-blur-md border border-black/30 rounded-2xl shadow-xl p-2">
               <div className="overflow-hidden rounded-xl w-[280px] h-[180px] md:w-[320px] md:h-[320px]">
@@ -248,7 +250,7 @@ export default function TestimonialsPage() {
       {/* Spacer */}
       <div className="h-6 md:h-10" />
 
-      {/* ===== Carousel (one by one) ===== */}
+      {/* ===== Carousel ===== */}
       <section className="mx-auto w-full max-w-[1200px] px-3 md:px-20">
         <div
           className="rounded-[28px] md:rounded-[36px] p-5 md:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.06)] ring-1 ring-black/5"
@@ -273,7 +275,7 @@ export default function TestimonialsPage() {
                   aria-live="polite"
                 >
                   <div className="flex flex-col md:flex-row items-center md:items-start gap-5 md:gap-8">
-                    {/* Avatar with crystal gold style */}
+                    {/* Avatar */}
                     <div className="shrink-0">
                       <div className="relative">
                         <div
@@ -297,7 +299,6 @@ export default function TestimonialsPage() {
                     {/* Quote + author */}
                     <div className="flex-1 text-center md:text-left">
                       <div className="mx-auto md:mx-0 w-10 h-10 rounded-full grid place-items-center bg-gray-100 text-gray-500 mb-3">
-                        {/* quote icon */}
                         <svg
                           viewBox="0 0 24 24"
                           className="w-5 h-5"
@@ -331,7 +332,7 @@ export default function TestimonialsPage() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={prev}
-                        className="rounded-full border border-gray-400 px-4 py-2 text-xs md:text-sm hover:bg白/70 active:scale-95 shadow-sm bg-white"
+                        className="rounded-full border border-gray-400 px-4 py-2 text-xs md:text-sm hover:bg-white/70 active:scale-95 shadow-sm bg-white"
                         aria-label="Previous testimonial"
                       >
                         ← Prev
@@ -349,7 +350,7 @@ export default function TestimonialsPage() {
                     </div>
 
                     {/* Dots */}
-                    <div className="flex items中心 gap-2">
+                    <div className="flex items-center gap-2">
                       {items.map((_, i) => (
                         <span
                           key={i}

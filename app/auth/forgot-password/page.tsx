@@ -15,6 +15,8 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
+
   const disabled = useMemo(
     () => submitting || !email || !/^\S+@\S+\.\S+$/.test(email),
     [submitting, email]
@@ -29,8 +31,8 @@ export default function ForgotPasswordPage() {
     setOk(false);
 
     try {
-      // ✅ use CSRF wrapper
-      const res = await fetchWithCsrf("/api/auth/forgot-password", {
+      // ✅ use CSRF wrapper with env base
+      const res = await fetchWithCsrf(`${apiBase}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),

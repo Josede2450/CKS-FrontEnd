@@ -2,8 +2,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-
-// ✅ use the wrapper via a relative import (no aliases)
 import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 // ===== Types =====
@@ -26,7 +24,7 @@ export type Page<T> = {
   last: boolean;
 };
 
-// ===== Small UI helpers (local to the component) =====
+// ===== Small UI helpers =====
 function Spinner() {
   return (
     <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-transparent" />
@@ -94,14 +92,15 @@ function IconButton({
 
 // ===== Component =====
 export default function ContactMessages({
-  apiBase,
   pageSize = 8,
   heading = "Contact Messages",
 }: {
-  apiBase: string;
   pageSize?: number;
   heading?: string;
 }) {
+  // ✅ centralized backend URL
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
+
   // table state
   const [items, setItems] = useState<ContactForm[]>([]);
   const [page, setPage] = useState(0);
@@ -121,7 +120,7 @@ export default function ContactMessages({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewing, setViewing] = useState<ContactForm | null>(null);
 
-  // ---- fetch contact messages (GET /api/contact) ----
+  // ---- fetch contact messages ----
   useEffect(() => {
     let cancelled = false;
 
@@ -167,7 +166,6 @@ export default function ContactMessages({
     try {
       setDeletingId(id);
 
-      // ✅ CSRF-aware wrapper for DELETE
       const res = await fetchWithCsrf(`${apiBase}/api/contact/${id}`, {
         method: "DELETE",
       });

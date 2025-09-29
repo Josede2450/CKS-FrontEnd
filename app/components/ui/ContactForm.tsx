@@ -9,6 +9,8 @@ const raleway = Raleway({ subsets: ["latin"], weight: ["600"] });
 type Errors = Partial<Record<"name" | "email" | "message" | "phone", string>>;
 
 export default function ContactForm({ msgMax = 1200 }: { msgMax?: number }) {
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!; // ✅ use env var
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -59,8 +61,8 @@ export default function ContactForm({ msgMax = 1200 }: { msgMax?: number }) {
     try {
       setLoading(true);
 
-      // ✅ RELATIVE path (rewrites → backend)
-      const res = await fetch("/api/contact", {
+      // ✅ Use backend API from env
+      const res = await fetch(`${apiBase}/api/contact`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

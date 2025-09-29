@@ -30,6 +30,8 @@ export default function ResetPasswordPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
   // ---- password rules (same as register) ----
   const PWD_MIN = 8;
   const PWD_MAX = 64;
@@ -97,8 +99,8 @@ export default function ResetPasswordPage() {
     setOk(false);
 
     try {
-      // ✅ Use CSRF-aware wrapper instead of manual ensureCsrfToken
-      const res = await fetchWithCsrf("/api/auth/reset-password", {
+      // ✅ Use CSRF-aware wrapper and env-based API
+      const res = await fetchWithCsrf(`${apiBase}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword: form.password }),

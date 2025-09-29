@@ -2,47 +2,36 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
-// ✅ CSRF-aware fetch (relative import, no aliases)
 import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
 /* =========================
    Types aligned to backend
    ========================= */
-
 export type Category = {
-  // tolerant id keys
   category_id?: number;
   categoryId?: number;
   id?: number;
-
   name?: string;
   slug?: string;
 };
 
 export type ServiceItem = {
-  // tolerant id keys
   service_id?: number;
   serviceId?: number;
   id?: number;
 
-  // fields in DB/entity
   title?: string;
   summary?: string | null;
   description?: string | null;
-  image_url?: string | null; // snake_case (DB/JSON)
-  imageUrl?: string | null; // camelCase (if entity uses this)
+  image_url?: string | null;
+  imageUrl?: string | null;
 
-  // most popular (tolerant snake/camel)
   most_popular?: boolean | 0 | 1;
   mostPopular?: boolean;
 
-  // categories on the entity (returned by backend)
   categories?: Category[];
-
-  // pricing & duration
-  price_range?: string | null; // snake
-  priceRange?: string | null; // camel
+  price_range?: string | null;
+  priceRange?: string | null;
   duration?: string | null;
 };
 
@@ -57,9 +46,28 @@ export type Page<T> = {
 };
 
 /* =========================
-   Small UI helpers
+   Helpers
    ========================= */
+const getId = (s: ServiceItem) => s.service_id ?? s.serviceId ?? s.id ?? null;
+const getCatId = (c: Category) => c.category_id ?? c.categoryId ?? c.id ?? null;
 
+const getTitle = (s: ServiceItem) =>
+  s.title ?? (getId(s) ? `#${getId(s)}` : "—");
+const getSummary = (s: ServiceItem) => s.summary ?? "";
+const getDescription = (s: ServiceItem) => s.description ?? "";
+const getImageUrl = (s: ServiceItem) => s.imageUrl ?? s.image_url ?? "";
+const getPopular = (s: ServiceItem) => {
+  const v = s.mostPopular ?? s.most_popular ?? false;
+  if (typeof v === "number") return v === 1;
+  return !!v;
+};
+const getCategories = (s: ServiceItem) => s.categories ?? [];
+const getPriceRange = (s: ServiceItem) => s.priceRange ?? s.price_range ?? "";
+const getDuration = (s: ServiceItem) => s.duration ?? "";
+
+/* =========================
+   UI helpers
+   ========================= */
 function Spinner() {
   return (
     <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-transparent" />
@@ -78,11 +86,7 @@ function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-        aria-hidden
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="absolute inset-0 grid place-items-center p-4">
         <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl">
           {children}
@@ -129,44 +133,23 @@ function IconButton({
 }
 
 /* =========================
-   Helpers (tolerant keys)
-   ========================= */
-
-const getId = (s: ServiceItem) => s.service_id ?? s.serviceId ?? s.id ?? null;
-const getCatId = (c: Category) => c.category_id ?? c.categoryId ?? c.id ?? null;
-
-const getTitle = (s: ServiceItem) =>
-  s.title ?? (getId(s) ? `#${getId(s)}` : "—");
-const getSummary = (s: ServiceItem) => s.summary ?? "";
-const getDescription = (s: ServiceItem) => s.description ?? "";
-const getImageUrl = (s: ServiceItem) => s.imageUrl ?? s.image_url ?? "";
-const getPopular = (s: ServiceItem) => {
-  const v = s.mostPopular ?? s.most_popular ?? false;
-  if (typeof v === "number") return v === 1;
-  return !!v;
-};
-const getCategories = (s: ServiceItem) => s.categories ?? [];
-const getPriceRange = (s: ServiceItem) => s.priceRange ?? s.price_range ?? "";
-const getDuration = (s: ServiceItem) => s.duration ?? "";
-
-/* =========================
    Component
    ========================= */
-
 export default function ServicesManager({
-  apiBase,
   pageSize = 8,
   heading = "Services",
-  sortKey = "", // keep empty to avoid backend sort errors unless you know the property exists
+  sortKey = "",
   pollMs = 0,
 }: {
-  apiBase: string;
   pageSize?: number;
   heading?: string;
   sortKey?: string;
   pollMs?: number;
 }) {
-  // table state
+  // ✅ Use env var instead of prop
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
+
+  // state
   const [items, setItems] = useState<ServiceItem[]>([]);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
@@ -183,19 +166,16 @@ export default function ServicesManager({
     last: true,
   });
 
-  // categories master list for filter + form
   const [cats, setCats] = useState<Category[]>([]);
   const [catsLoading, setCatsLoading] = useState(false);
   const [catsErr, setCatsErr] = useState<string | null>(null);
 
-  // create/edit/delete state
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editing, setEditing] = useState<ServiceItem | null>(null);
   const [creating, setCreating] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
-  // form state — aligned with backend (plus categories)
   const [form, setForm] = useState<{
     title: string;
     summary: string;
@@ -216,7 +196,6 @@ export default function ServicesManager({
     duration: "",
   });
 
-  // manual refresh trigger
   const [refreshKey, setRefreshKey] = useState(0);
   const doRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -323,7 +302,6 @@ export default function ServicesManager({
     };
   }, [apiBase, page, q, pageSize, sortKey, refreshKey, selectedCategorySlug]);
 
-  // optional polling
   useEffect(() => {
     if (!pollMs || pollMs < 1000) return;
     const id = setInterval(() => setRefreshKey((k) => k + 1), pollMs);
@@ -331,7 +309,7 @@ export default function ServicesManager({
   }, [pollMs]);
 
   /* =========================
-     Create / Edit helpers
+     Create/Edit helpers
      ========================= */
   function openCreate() {
     setForm({
@@ -380,14 +358,12 @@ export default function ServicesManager({
         summary: form.summary,
         description: form.description,
         imageUrl: form.imageUrl || null,
-        image_url: form.imageUrl || null, // tolerate snake
+        image_url: form.imageUrl || null,
         mostPopular: !!form.mostPopular,
         most_popular: !!form.mostPopular,
-
         priceRange: form.priceRange || null,
         price_range: form.priceRange || null,
         duration: form.duration || null,
-
         categories:
           form.categoryIds?.map((id) => ({ categoryId: id })) ?? undefined,
       };
@@ -398,7 +374,6 @@ export default function ServicesManager({
         ? `${apiBase}/api/services/${idForEdit}`
         : `${apiBase}/api/services`;
 
-      // ✅ CSRF-aware wrapper for POST/PUT
       const res = await fetchWithCsrf(url, {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -428,7 +403,6 @@ export default function ServicesManager({
     try {
       setDeletingId(idLike);
 
-      // ✅ CSRF-aware wrapper for DELETE
       const res = await fetchWithCsrf(`${apiBase}/api/services/${idLike}`, {
         method: "DELETE",
       });
@@ -437,7 +411,7 @@ export default function ServicesManager({
         const text = await res.text();
         throw new Error(text || `Failed to delete (#${idLike})`);
       }
-      setItems((prev) => prev.filter((c) => getId(c) !== idLike)); // optimistic
+      setItems((prev) => prev.filter((c) => getId(c) !== idLike));
       doRefresh();
     } catch (error: any) {
       alert(error?.message ?? "Could not delete");
@@ -465,15 +439,12 @@ export default function ServicesManager({
         image_url: getImageUrl(row) || null,
         mostPopular: nextPopular,
         most_popular: nextPopular,
-
         priceRange: getPriceRange(row) || null,
         price_range: getPriceRange(row) || null,
         duration: getDuration(row) || null,
-
         categories: currentCatIds.map((cid) => ({ categoryId: cid })),
       };
 
-      // ✅ CSRF-aware wrapper for PUT
       const res = await fetchWithCsrf(`${apiBase}/api/services/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -509,7 +480,6 @@ export default function ServicesManager({
   /* =========================
      UI
      ========================= */
-
   return (
     <div className="rounded-[28px] md:rounded-[36px] bg-gray-100/70 p-6 md:p-10">
       <div className="max-w-[980px] mx-auto bg-white rounded-[24px] shadow-sm ring-1 ring-black/5 overflow-hidden">
@@ -529,8 +499,6 @@ export default function ServicesManager({
               placeholder="Search services…"
               className="w-64 max-w-[70vw] rounded-full border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-gray-200"
             />
-
-            {/* Category filter */}
             <select
               value={selectedCategorySlug}
               onChange={(e) => {
@@ -547,7 +515,6 @@ export default function ServicesManager({
                 </option>
               ))}
             </select>
-
             <label className="ml-2 flex items-center gap-2 text-sm text-gray-700">
               <input
                 type="checkbox"
@@ -556,7 +523,6 @@ export default function ServicesManager({
               />
               Popular only
             </label>
-
             <IconButton title="Refresh" onClick={doRefresh}>
               🔄 Refresh
             </IconButton>
@@ -605,7 +571,6 @@ export default function ServicesManager({
                   </td>
                 </tr>
               )}
-
               {err && !loading && (
                 <tr>
                   <td
@@ -616,7 +581,6 @@ export default function ServicesManager({
                   </td>
                 </tr>
               )}
-
               {!loading && !err && visibleItems.length === 0 && (
                 <tr>
                   <td
@@ -627,7 +591,6 @@ export default function ServicesManager({
                   </td>
                 </tr>
               )}
-
               {!loading &&
                 !err &&
                 visibleItems.map((s) => {
@@ -667,7 +630,6 @@ export default function ServicesManager({
                           {getDescription(s)}
                         </span>
                       </td>
-
                       <td className="px-5 md:px-7 py-3">
                         <div className="flex flex-wrap gap-1.5">
                           {catsArr && catsArr.length > 0 ? (
@@ -685,15 +647,12 @@ export default function ServicesManager({
                           )}
                         </div>
                       </td>
-
                       <td className="px-5 md:px-7 py-3 whitespace-nowrap text-gray-700">
                         {getPriceRange(s) || "—"}
                       </td>
-
                       <td className="px-5 md:px-7 py-3 whitespace-nowrap text-gray-700">
                         {getDuration(s) || "—"}
                       </td>
-
                       <td className="px-5 md:px-7 py-3">
                         <button
                           className="text-lg"
@@ -817,7 +776,7 @@ export default function ServicesManager({
             />
           </div>
 
-          {/* Price Range (≤250 chars) */}
+          {/* Price Range */}
           <div className="space-y-1">
             <label className="text-sm">
               Price Range{" "}
@@ -840,7 +799,7 @@ export default function ServicesManager({
             </p>
           </div>
 
-          {/* Duration (≤255 chars) */}
+          {/* Duration */}
           <div className="space-y-1">
             <label className="text-sm">
               Duration{" "}
