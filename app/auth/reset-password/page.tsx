@@ -1,23 +1,19 @@
-// app/auth/reset-password/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import doubleFace from "../../public/images/annonymous.jpg";
-
-// ✅ import the CSRF-aware fetch wrapper
-import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
+import { fetchWithCsrf } from "../../lib/fetchWithCsrf"; // ✅ CSRF wrapper
 
 type FormState = {
   password: string;
   confirmPassword: string;
 };
-
 type Errors = Partial<Record<keyof FormState, string>>;
 
-export default function ResetPasswordPage() {
+function ResetPasswordInner() {
   const searchParams = useSearchParams();
   const token = (searchParams.get("token") ?? "").trim();
 
@@ -69,11 +65,9 @@ export default function ResetPasswordPage() {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }
-
   function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
     setTouched((t) => ({ ...t, [e.target.name]: true }));
   }
-
   function markTouchedAll() {
     setTouched({ password: true, confirmPassword: true });
   }
@@ -99,7 +93,6 @@ export default function ResetPasswordPage() {
     setOk(false);
 
     try {
-      // ✅ Use CSRF-aware wrapper and env-based API
       const res = await fetchWithCsrf(`${apiBase}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,14 +127,7 @@ export default function ResetPasswordPage() {
 
   return (
     <main className="bg-white mt-12 px-4">
-      <div
-        className="
-          mx-auto w-full max-w-[1200px]
-          flex flex-col md:flex-row items-center md:items-stretch
-          rounded-[50px] overflow-hidden shadow-md
-          h-auto md:h-[625px]
-        "
-      >
+      <div className="mx-auto w-full max-w-[1200px] flex flex-col md:flex-row items-center md:items-stretch rounded-[50px] overflow-hidden shadow-md h-auto md:h-[625px]">
         {/* Left: illustration */}
         <div className="hidden md:flex w-1/2 bg-gray-100">
           <Image
@@ -249,5 +235,13 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ResetPasswordPageWrapper() {
+  return (
+    <Suspense fallback={<p className="p-6 text-sm text-gray-600">Loading…</p>}>
+      <ResetPasswordInner />
+    </Suspense>
   );
 }
