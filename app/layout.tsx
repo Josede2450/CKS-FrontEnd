@@ -5,7 +5,7 @@ import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 
 // ✅ import logo image
-import cksLogo from "./public/images/cks-logo.png";
+import cksLogo from "./public/images/cks.png";
 
 // fonts
 const geistSans = Geist({
