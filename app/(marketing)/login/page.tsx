@@ -88,11 +88,12 @@ function LoginInner() {
     setError(null);
 
     try {
-      // ✅ Use CSRF-aware wrapper
+      // ✅ Use CSRF-aware wrapper with credentials
       const res = await fetchWithCsrf(`${apiBase}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include", // 🔑 ensure cookies are sent/stored
       });
 
       if (res.status === 204 || res.ok) {
