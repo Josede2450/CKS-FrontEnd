@@ -1,4 +1,3 @@
-// components/ui/ServiceModal.tsx
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,8 +11,6 @@ type ServiceDetail = {
   summary?: string;
   priceRange?: string | null;
   duration?: string | null;
-
-  // popularity flags (optional)
   mostPopular?: boolean | 0 | 1;
   most_popular?: boolean | 0 | 1;
   popular?: boolean | 0 | 1;
@@ -80,7 +77,7 @@ export default function ServiceModal({
             role="dialog"
             aria-modal="true"
             className="
-              fixed left-1/2 top-1/2 z-[90]
+              fixed left-1/2 top-1/2 z-[90] relative
               -translate-x-1/2 -translate-y-1/2
               w-[92vw] max-w-[1100px]
               h-[70dvh] md:h-[60vh]
@@ -96,9 +93,13 @@ export default function ServiceModal({
           >
             {/* Mobile Close Button */}
             <button
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
               className="
-                md:hidden absolute top-3 right-3
+                md:hidden absolute top-3 right-3 z-[100]
                 grid place-items-center h-9 w-9 rounded-full
                 bg-gradient-to-br from-[#F84E33] to-[#890F4C]
                 text-white shadow-md hover:scale-[1.05] transition
@@ -136,7 +137,7 @@ export default function ServiceModal({
                   }}
                 />
 
-                {/* Description — now supports rich HTML */}
+                {/* Description */}
                 <div
                   className="
                     mt-6
