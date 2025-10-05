@@ -2,7 +2,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import "react-quill/dist/quill.snow.css";
 import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
+
+const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
 
 /* =========================
    Types aligned to backend
@@ -85,12 +89,16 @@ function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute inset-0 grid place-items-center p-4">
-        <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl">
-          {children}
-        </div>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
+      <div
+        className="relative z-10 w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()} // prevent close on inner click
+      >
+        {children}
       </div>
     </div>
   );
@@ -146,10 +154,8 @@ export default function ServicesManager({
   sortKey?: string;
   pollMs?: number;
 }) {
-  // ✅ Use env var instead of prop
   const apiBase = process.env.NEXT_PUBLIC_API_URL!;
 
-  // state
   const [items, setItems] = useState<ServiceItem[]>([]);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
@@ -471,7 +477,6 @@ export default function ServicesManager({
   }
 
   const sub = useMemo(() => "Newest first", []);
-
   const visibleItems = useMemo(() => {
     const base = items;
     return showPopularOnly ? base.filter((s) => getPopular(s)) : base;
@@ -626,9 +631,12 @@ export default function ServicesManager({
                         )}
                       </td>
                       <td className="px-5 md:px-7 py-3 max-w-[340px]">
-                        <span className="line-clamp-2 text-gray-700">
-                          {getDescription(s)}
-                        </span>
+                        <span
+                          className="line-clamp-2 text-gray-700"
+                          dangerouslySetInnerHTML={{
+                            __html: getDescription(s),
+                          }}
+                        />
                       </td>
                       <td className="px-5 md:px-7 py-3">
                         <div className="flex flex-wrap gap-1.5">
@@ -752,15 +760,16 @@ export default function ServicesManager({
             />
           </div>
 
+          {/* ✅ Rich Text Editor for Description */}
           <div className="space-y-1">
             <label className="text-sm">Description</label>
-            <textarea
+            <ReactQuill
+              theme="snow"
               value={form.description}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, description: e.target.value }))
+              onChange={(value) =>
+                setForm((f) => ({ ...f, description: value }))
               }
-              className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
-              rows={4}
+              className="bg-white rounded-lg border min-h-[180px]"
             />
           </div>
 
