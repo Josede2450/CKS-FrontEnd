@@ -22,7 +22,7 @@ type ServiceCardProps = {
   onLearnMore?: () => void;
   popular?: boolean; // corner badge
 
-  // NEW: accepted but NOT rendered here
+  // accepted but not shown on card
   priceRange?: string | null;
   duration?: string | null;
 };
@@ -40,12 +40,8 @@ export default function ServiceCard({
   className,
   onLearnMore,
   popular = false,
-
-  // keep these for downstream use (e.g., modal), but don't show on the card
-  priceRange: _priceRange,
-  duration: _duration,
 }: ServiceCardProps) {
-  // Prefer summary; fallback to description (trimmed)
+  // Prefer summary; fallback to trimmed description
   const preview =
     summary ??
     (description
@@ -58,27 +54,22 @@ export default function ServiceCard({
   const showImage = !!imageSrc && imgOk;
   const isRemote = typeof imageSrc === "string";
 
-  // Smaller gradient button (auto width) and no dot
   const gradientBtn =
-    "px-5 py-2 rounded-[8px] " +
-    "text-[14px] font-semibold text-white " +
-    "shadow-md bg-gradient-to-r from-[#F84E33] to-[#890F4C] " +
-    "hover:opacity-90 transition";
+    "px-5 py-2 rounded-[8px] text-[14px] font-semibold text-white " +
+    "shadow-md bg-gradient-to-r from-[#F84E33] to-[#890F4C] hover:opacity-90 transition";
 
-  // Hide mid-chip if it's literally "Popular" or when corner badge is shown
   const showMidTag =
     !!tag && tag.trim().toLowerCase() !== "popular" && !popular;
 
   return (
     <div
       className={clsx(
-        "relative",
-        "bg-white rounded-[22px] shadow-sm hover:shadow-md transition p-5 md:p-6",
+        "relative bg-white rounded-[22px] shadow-sm hover:shadow-md transition p-5 md:p-6",
         "flex flex-col items-center text-center h-[360px] w-full",
         className
       )}
     >
-      {/* Corner badge with reserved space */}
+      {/* Corner Popular Badge */}
       <div className="absolute top-3 right-3 h-6">
         {popular && (
           <span
@@ -126,7 +117,7 @@ export default function ServiceCard({
         )}
       </div>
 
-      {/* Optional mid-chip */}
+      {/* Mid Tag */}
       {showMidTag && (
         <span className="mb-1 inline-flex rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-600">
           {tag}
@@ -140,7 +131,7 @@ export default function ServiceCard({
 
       {/* Categories */}
       {categories?.length ? (
-        <div className=" flex flex-wrap justify-center gap-1.5 max-h-7 overflow-hidden">
+        <div className="flex flex-wrap justify-center gap-1.5 max-h-7 overflow-hidden mb-1">
           {categories.slice(0, 3).map((c, i) => (
             <span
               key={`${c.slug ?? c.name ?? i}`}
@@ -154,10 +145,11 @@ export default function ServiceCard({
         <div className="mb-4" />
       )}
 
-      {/* Summary */}
-      <p className="text-sm text-gray-600 leading-relaxed line-clamp-3">
-        {preview}
-      </p>
+      {/* Summary — now renders rich HTML safely */}
+      <div
+        className="text-sm text-gray-600 leading-relaxed line-clamp-3 prose prose-gray max-w-none text-center"
+        dangerouslySetInnerHTML={{ __html: preview }}
+      />
 
       <div className="flex-1" />
 

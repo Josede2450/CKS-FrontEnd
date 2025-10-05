@@ -29,7 +29,7 @@ export default function ServiceModal({
   onClose: () => void;
   service: ServiceDetail | null;
 }) {
-  // ESC to close
+  // ESC to close modal
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -38,7 +38,7 @@ export default function ServiceModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // lock background scroll
+  // Lock background scroll when open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -56,7 +56,6 @@ export default function ServiceModal({
     service?.summary?.trim() ||
     (service?.description ? service.description.split(/(?<=\.)\s/)[0] : "");
 
-  // same popularity logic as cards
   const isPopular =
     !!service?.mostPopular ||
     !!service?.most_popular ||
@@ -76,12 +75,13 @@ export default function ServiceModal({
             onClick={onClose}
           />
 
-          {/* Modal container (70% height on mobile) */}
+          {/* Modal Container */}
           <motion.div
             role="dialog"
             aria-modal="true"
             className="
-              fixed left-1/2 top-1/2 z-[90] -translate-x-1/2 -translate-y-1/2
+              fixed left-1/2 top-1/2 z-[90]
+              -translate-x-1/2 -translate-y-1/2
               w-[92vw] max-w-[1100px]
               h-[70dvh] md:h-[60vh]
               bg-white rounded-3xl shadow-2xl overflow-hidden
@@ -94,7 +94,7 @@ export default function ServiceModal({
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
             onClick={stop}
           >
-            {/* Mobile global close (top-right of modal) */}
+            {/* Mobile Close Button */}
             <button
               onClick={onClose}
               className="
@@ -109,7 +109,7 @@ export default function ServiceModal({
               ✕
             </button>
 
-            {/* LEFT: scrollable content */}
+            {/* LEFT: Scrollable Content */}
             <div
               className="
                 flex-1 px-6 py-6 md:px-10 md:py-10
@@ -126,7 +126,8 @@ export default function ServiceModal({
                 <h2 className="text-xl md:text-2xl font-semibold italic text-gray-900">
                   {service.title}
                 </h2>
-                {/* Accent bar under title */}
+
+                {/* Accent bar */}
                 <div
                   className="mx-auto mt-2 h-[3px] w-24 rounded-full"
                   style={{
@@ -135,21 +136,20 @@ export default function ServiceModal({
                   }}
                 />
 
-                {/* Description */}
-                <p
+                {/* Description — now supports rich HTML */}
+                <div
                   className="
-                    mt-6 
-                    text-[16px] md:text-base 
-                    text-gray-700 
-                    leading-7 tracking-[0.005em] 
-                    whitespace-pre-line 
-                    text-justify
+                    mt-6
+                    text-[16px] md:text-base
+                    text-gray-700 leading-7 tracking-[0.005em]
+                    prose prose-gray max-w-none text-justify
                   "
-                >
-                  {service.description}
-                </p>
+                  dangerouslySetInnerHTML={{
+                    __html: service.description || "",
+                  }}
+                />
 
-                {/* Stat cards */}
+                {/* Price & Duration Cards */}
                 {(service.priceRange || service.duration) && (
                   <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {service.priceRange && (
@@ -188,24 +188,22 @@ export default function ServiceModal({
                   <a
                     href="/contact"
                     className="
-      w-[200px] md:w-[300px]   /* 200px on mobile, 300px on desktop */
-      flex items-center justify-center
-      rounded-[10px]
-      px-6 py-3
-      text-[16px] font-semibold
-      text-white
-      shadow-md
-      bg-gradient-to-r from-[#F84E33] to-[#890F4C]
-      hover:opacity-90
-      transition
-    "
+                      w-[200px] md:w-[300px]
+                      flex items-center justify-center
+                      rounded-[10px]
+                      px-6 py-3
+                      text-[16px] font-semibold text-white
+                      shadow-md
+                      bg-gradient-to-r from-[#F84E33] to-[#890F4C]
+                      hover:opacity-90 transition
+                    "
                     aria-label="Contact Us"
                   >
                     Contact Us
                   </a>
                 </div>
 
-                {/* ===== Mobile-only gradient block (NOT fixed) ===== */}
+                {/* MOBILE IMAGE PANEL */}
                 {service.image_url && (
                   <div
                     className="md:hidden mt-6 rounded-[22px] px-4 py-5 flex items-center justify-center"
@@ -222,7 +220,6 @@ export default function ServiceModal({
                           w-[230px] h-[135px]
                         "
                       >
-                        {/* Popular badge — EXACT same as ServiceCard */}
                         {isPopular && (
                           <div className="absolute top-3 right-3 h-6 pointer-events-none">
                             <span className="rounded-full bg-amber-500 text-white text-[10px] font-bold px-3 py-1 shadow-sm">
@@ -230,8 +227,6 @@ export default function ServiceModal({
                             </span>
                           </div>
                         )}
-
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={service.image_url}
                           alt={service.title}
@@ -260,7 +255,7 @@ export default function ServiceModal({
               </div>
             </div>
 
-            {/* RIGHT: gradient panel for DESKTOP (hidden on mobile) */}
+            {/* RIGHT: Desktop Gradient Panel */}
             <div
               className="
                 relative hidden md:flex md:w-[440px]
@@ -272,7 +267,7 @@ export default function ServiceModal({
                   "linear-gradient(135deg, #F84E33 0%, #890F4C 50%, #0F0200 100%)",
               }}
             >
-              {/* vertical glow divider */}
+              {/* Divider Glow */}
               <span
                 aria-hidden
                 className="absolute left-0 top-0 h-full w-[3px]"
@@ -282,7 +277,7 @@ export default function ServiceModal({
                 }}
               />
 
-              {/* Desktop close button */}
+              {/* Desktop Close Button */}
               <button
                 onClick={onClose}
                 className="absolute right-4 top-4 grid place-items-center h-8 w-8 rounded-full bg-white text-[#6b21a8] shadow-md hover:scale-[1.03] transition"
@@ -295,7 +290,6 @@ export default function ServiceModal({
               {service.image_url && (
                 <div className="space-y-4 text-center relative">
                   <div className="mx-auto relative w-[300px] h-[190px] rounded-2xl overflow-hidden ring-1 ring-white/20 shadow-lg">
-                    {/* Popular badge — EXACT same as ServiceCard */}
                     {isPopular && (
                       <div className="absolute top-3 right-3 h-6 pointer-events-none">
                         <span className="rounded-full bg-amber-500 text-white text-[10px] font-bold px-3 py-1 shadow-sm">
@@ -303,8 +297,6 @@ export default function ServiceModal({
                         </span>
                       </div>
                     )}
-
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={service.image_url}
                       alt={service.title}
