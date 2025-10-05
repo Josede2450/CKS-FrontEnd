@@ -140,7 +140,7 @@ export default function ServiceCard({
 
       {/* Categories */}
       {categories?.length ? (
-        <div className="mb-2 flex flex-wrap justify-center gap-1.5 max-h-7 overflow-hidden">
+        <div className=" flex flex-wrap justify-center gap-1.5 max-h-7 overflow-hidden">
           {categories.slice(0, 3).map((c, i) => (
             <span
               key={`${c.slug ?? c.name ?? i}`}
