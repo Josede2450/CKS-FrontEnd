@@ -91,14 +91,18 @@ export default function ServiceModal({
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
             onClick={stop}
           >
-            {/* ✅ Mobile Close Button (fixed) */}
+            {/* ✅ Mobile Close Button (now works on iOS & Android) */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
               }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
               className="
-                md:hidden absolute top-3 right-3
+                md:hidden absolute top-3 right-3 z-[9999]
                 grid place-items-center h-9 w-9 rounded-full
                 bg-gradient-to-br from-[#F84E33] to-[#890F4C]
                 text-white shadow-md active:scale-95 transition
