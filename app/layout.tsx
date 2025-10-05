@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     title: "CKS – Creativity, Knowledge & Software",
     description: "Modern web development, marketing, and design solutions.",
     url: "https://cks.software",
-    siteName: "CKS",
+    siteName: "Creativity, Knowledge & Software",
     images: [
       {
         url: cksLogo.src, // 👈 same logo used for Open Graph
