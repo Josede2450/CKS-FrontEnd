@@ -631,13 +631,14 @@ export default function ServicesManager({
                         )}
                       </td>
                       <td className="px-5 md:px-7 py-3 max-w-[340px]">
-                        <span
-                          className="line-clamp-2 text-gray-700"
+                        <div
+                          className="prose prose-sm text-gray-700 line-clamp-3"
                           dangerouslySetInnerHTML={{
                             __html: getDescription(s),
                           }}
                         />
                       </td>
+
                       <td className="px-5 md:px-7 py-3">
                         <div className="flex flex-wrap gap-1.5">
                           {catsArr && catsArr.length > 0 ? (
