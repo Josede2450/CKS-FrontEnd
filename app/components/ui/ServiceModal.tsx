@@ -77,7 +77,7 @@ export default function ServiceModal({
             role="dialog"
             aria-modal="true"
             className="
-              fixed left-1/2 top-1/2 z-[90] relative
+              fixed left-1/2 top-1/2 z-[90]
               -translate-x-1/2 -translate-y-1/2
               w-[92vw] max-w-[1100px]
               h-[70dvh] md:h-[60vh]
@@ -91,18 +91,17 @@ export default function ServiceModal({
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
             onClick={stop}
           >
-            {/* Mobile Close Button */}
+            {/* ✅ Mobile Close Button (fixed) */}
             <button
               onClick={(e) => {
-                e.preventDefault();
                 e.stopPropagation();
                 onClose();
               }}
               className="
-                md:hidden absolute top-3 right-3 z-[100]
+                md:hidden absolute top-3 right-3
                 grid place-items-center h-9 w-9 rounded-full
                 bg-gradient-to-br from-[#F84E33] to-[#890F4C]
-                text-white shadow-md hover:scale-[1.05] transition
+                text-white shadow-md active:scale-95 transition
               "
               aria-label="Close"
               title="Close"
