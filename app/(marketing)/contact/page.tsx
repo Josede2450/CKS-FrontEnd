@@ -5,7 +5,7 @@ import Image from "next/image";
 import ContactForm from "../../components/ui/ContactForm";
 import contactArt from "../../public/images/ContactUs.jpg";
 import { Raleway, Source_Sans_3 } from "next/font/google";
-import { Instagram, Mail } from "lucide-react"; // ✅ added Mail icon
+import { Instagram, Mail } from "lucide-react";
 
 const raleway = Raleway({ subsets: ["latin"], weight: ["400", "700"] });
 const sourceSans = Source_Sans_3({ subsets: ["latin"], weight: ["200"] });
@@ -31,35 +31,27 @@ export default function ContactPage() {
         }}
       >
         <div className="mx-auto w-full max-w-[1200px] h-full min-h-[650px] py-10 px-4 md:px-6 flex flex-col items-center">
-          {/* Section Heading */}
-          <div className="text-center">
-            <h2
-              className={`${raleway.className} text-black italic font-bold text-[26px] md:text-[32px]`}
-            >
-              Contact Us
-            </h2>
-            <div
-              className="mx-auto mt-2 h-[3px] w-20 rounded-full"
-              style={{
-                background:
-                  "linear-gradient(to right, #C78B3B 0%, #E8C877 25%, #FCEBA4 50%, #E8C877 75%, #C78B3B 100%)",
-              }}
-            />
-          </div>
-
-          {/* Content grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full mt-8">
-            {/* RIGHT: form */}
-            <div className="order-1 md:order-2 flex justify-center md:justify-start items-center">
-              <div className="w-full max-w-[420px] bg-white rounded-[20px] shadow-xl p-6 md:p-8">
-                <div className={sourceSans.className}>
-                  <ContactForm />
-                </div>
+          {/* Grid layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full mt-8 items-center">
+            {/* LEFT: all centered content */}
+            <div className="order-1 md:order-1 flex flex-col items-center text-center justify-center gap-5 mt-5">
+              {/* Contact Us title */}
+              <div>
+                <h2
+                  className={`${raleway.className} text-black italic font-bold text-[26px] md:text-[32px] text-center`}
+                >
+                  Contact Us
+                </h2>
+                <div
+                  className="mx-auto mt-2 h-[3px] w-20 rounded-full"
+                  style={{
+                    background:
+                      "linear-gradient(to right, #C78B3B 0%, #E8C877 25%, #FCEBA4 50%, #E8C877 75%, #C78B3B 100%)",
+                  }}
+                />
               </div>
-            </div>
 
-            {/* LEFT: info + styled image */}
-            <div className="order-2 md:order-1 flex flex-col items-center text-center gap-5 mt-5">
+              {/* Get in touch badge */}
               <div
                 className={`${raleway.className} inline-block rounded-full px-4 py-1 text-xs md:text-sm italic font-bold shadow-sm`}
                 style={{
@@ -70,6 +62,7 @@ export default function ContactPage() {
                 Get in touch
               </div>
 
+              {/* Description */}
               <p className="max-w-[500px] italic font-bold text-sm md:text-lg leading-relaxed">
                 Find answers to the most common questions about our services,
                 pricing, and support. If you can’t find what you’re looking for,
@@ -78,39 +71,32 @@ export default function ContactPage() {
                 email us.
               </p>
 
-              {/* ✅ Contact links */}
+              {/* Contact links */}
               <div className="flex flex-col items-center gap-2">
                 <a
                   href="https://instagram.com/cks_software"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm md:text-base font-semibold text-black hover:underline"
+                  className="flex items-center gap-2 text-sm md:text-base font-bold text-black hover:underline"
                 >
                   <Instagram className="w-5 h-5" /> @cks_software
                 </a>
 
                 <a
                   href="mailto:cks.software2021@gmail.com"
-                  className="flex items-center gap-2 text-sm md:text-base font-semibold text-black hover:underline"
+                  className="flex items-center gap-2 text-sm md:text-base font-bold text-black hover:underline"
                 >
                   <Mail className="w-5 h-5" /> cks.software2021@gmail.com
                 </a>
               </div>
+            </div>
 
-              {/* Styled image */}
-              <div className="relative bg-black/10 backdrop-blur-md border border-black/20 rounded-2xl shadow-xl p-2 mt-4">
-                <div className="overflow-hidden rounded-xl w-[200px] h-[140px] md:w-[300px] md:h-[270px]">
-                  <Image
-                    src={contactArt}
-                    alt="Creative contact artwork"
-                    width={220}
-                    height={160}
-                    quality={100}
-                    className="w-full h-full object-cover"
-                    priority
-                  />
+            {/* RIGHT: form (bottom on mobile) */}
+            <div className="order-2 md:order-2 flex justify-center items-center">
+              <div className="w-full max-w-[420px] bg-white rounded-[20px] shadow-xl p-6 md:p-8">
+                <div className={sourceSans.className}>
+                  <ContactForm />
                 </div>
-                <span className="pointer-events-none absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-black/15 border border-black/20 backdrop-blur-sm" />
               </div>
             </div>
           </div>

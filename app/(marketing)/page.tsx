@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -44,19 +43,13 @@ type Svc = {
   duration?: string | null;
 };
 
-interface ViewUser {
-  id: number;
-  firstName: string;
-  lastName: string;
-  pictureUrl?: string;
-}
-
+// ✅ Simplified testimonial type (no nested user)
 interface ViewTestimonial {
   id: number;
   quote: string;
-  createdAt: string;
+  createdAt: string | null;
   favorite: boolean;
-  user?: ViewUser;
+  imgUrl: string | null;
 }
 
 // tolerant helpers
@@ -73,7 +66,7 @@ const isPopular = (s: Svc) => {
 };
 
 export default function HomePage() {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL!; // ✅ env base URL
+  const apiBase = process.env.NEXT_PUBLIC_API_URL!;
 
   /* ---------------- Testimonials ---------------- */
   const [favorites, setFavorites] = useState<ViewTestimonial[]>([]);
@@ -88,7 +81,16 @@ export default function HomePage() {
         );
         if (!res.ok) throw new Error("Failed to fetch testimonials");
         const data = await res.json();
-        setFavorites(data?.content || []);
+
+        const list = (data?.content || []).map((t: any) => ({
+          id: t.id,
+          quote: t.quote || t.content || "",
+          createdAt: t.createdAt || null,
+          favorite: !!t.favorite,
+          imgUrl: t.imgUrl || "/images/avatar-placeholder.png",
+        }));
+
+        setFavorites(list);
       } catch (e) {
         console.error(e);
         setFavorites([]);
@@ -161,9 +163,7 @@ export default function HomePage() {
 
         const res = await fetch(
           `${apiBase}/api/services?size=24&popular=true`,
-          {
-            credentials: "include",
-          }
+          { credentials: "include" }
         );
         if (!res.ok)
           throw new Error((await res.text()) || `Failed ${res.status}`);
@@ -261,12 +261,10 @@ export default function HomePage() {
         text-center md:text-left
       "
           >
-            {/* Tagline text */}
             <p className="text-2xl md:text-4xl text-gray-900 italic mx-auto md:mx-0">
               We make it possible
             </p>
 
-            {/* Brush */}
             <div className="w-20 sm:w-28 md:w-40 mx-auto md:mx-0">
               <Image
                 src={heroSignature}
@@ -290,7 +288,6 @@ export default function HomePage() {
         }}
       >
         <div className="mx-auto w-full max-w-[1200px] px-5 md:px-10 py-10 md:h-[550px] flex flex-col justify-center">
-          {/* Mobile layout */}
           <div className="md:hidden flex flex-col items-center text-center gap-4 text-white">
             <Image
               src={cksLogoWhite}
@@ -500,28 +497,24 @@ export default function HomePage() {
                 exit="exit"
                 transition={{ type: "spring", stiffness: 300, damping: 26 }}
                 className="w-full max-w-3xl rounded-[28px] px-8 py-10 flex flex-col items-center gap-6
-                     bg-white/10 backdrop-blur-md shadow-xl border border-white/20"
+                   bg-white/10 backdrop-blur-md shadow-xl border border-white/20"
               >
                 <div className="w-24 h-24 rounded-full overflow-hidden bg-white/20 border border-white/30">
                   <img
-                    src={
-                      current.user?.pictureUrl ||
-                      "/images/avatar-placeholder.png"
-                    }
-                    alt="Client avatar"
+                    src={current.imgUrl ?? "/images/avatar-placeholder.png"}
+                    alt="Client testimonial image"
                     className="w-full h-full object-cover"
                   />
                 </div>
 
                 <blockquote className="text-white/90 italic text-[16px] leading-relaxed max-w-xl">
-                  {current.quote}
+                  {current.quote || "No content available"}
                 </blockquote>
 
                 <footer className="text-sm text-white/70">
-                  —{" "}
-                  <b>{`${current.user?.firstName || ""} ${
-                    current.user?.lastName || ""
-                  }`}</b>
+                  {current.createdAt
+                    ? new Date(current.createdAt).toLocaleDateString()
+                    : ""}
                 </footer>
 
                 {favorites.length > 1 && (
@@ -556,9 +549,9 @@ export default function HomePage() {
           <Link
             href="/testimonials"
             className="inline-flex items-center justify-center 
-                rounded-[14px] px-12 py-2.5 
-                bg-white text-[#052C48] text-[14px] font-medium
-                shadow hover:bg-white/90 transition"
+          rounded-[14px] px-12 py-2.5 
+          bg-white text-[#052C48] text-[14px] font-medium
+          shadow hover:bg-white/90 transition"
           >
             Testimonials
           </Link>

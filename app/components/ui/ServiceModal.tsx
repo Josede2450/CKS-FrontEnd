@@ -91,7 +91,7 @@ export default function ServiceModal({
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
             onClick={stop}
           >
-            {/* ✅ Mobile Close Button (now works on iOS & Android) */}
+            {/* Mobile Close Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -126,7 +126,7 @@ export default function ServiceModal({
               }}
             >
               <div className="mx-auto max-w-[680px] text-center">
-                {/* Title */}
+                {/* TITLE FIRST */}
                 <h2 className="text-xl md:text-2xl font-semibold italic text-gray-900">
                   {service.title}
                 </h2>
@@ -140,10 +140,60 @@ export default function ServiceModal({
                   }}
                 />
 
+                {/* 🖼 MOBILE IMAGE PANEL – now directly under title */}
+                {service.image_url && (
+                  <div
+                    className="md:hidden mt-5 mb-4 rounded-[22px] px-4 py-5 flex items-center justify-center"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #F84E33 0%, #890F4C 50%, #0F0200 100%)",
+                    }}
+                  >
+                    <div className="w-full flex flex-col items-center justify-center text-center relative">
+                      <div
+                        className="
+                          mx-auto relative
+                          rounded-2xl overflow-hidden ring-1 ring-black/15 shadow-lg bg-black/10
+                          w-[230px] h-[135px]
+                        "
+                      >
+                        {isPopular && (
+                          <div className="absolute top-3 right-3 h-6 pointer-events-none">
+                            <span className="rounded-full bg-amber-500 text-white text-[10px] font-bold px-3 py-1 shadow-sm">
+                              Popular
+                            </span>
+                          </div>
+                        )}
+                        <img
+                          src={service.image_url}
+                          alt={service.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+
+                      {summaryText && (
+                        <div
+                          className="
+                            mt-4 max-w-[95%]
+                            rounded-full 
+                            bg-gradient-to-r from-[#F84E33] to-[#890F4C]
+                            text-white shadow-md
+                            px-5 py-2
+                            text-[14px] font-semibold tracking-wide
+                          "
+                        >
+                          {summaryText}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Description */}
                 <div
                   className="
-                    mt-6
+                    mt-4
                     text-[16px] md:text-base
                     text-gray-700 leading-7 tracking-[0.005em]
                     prose prose-gray max-w-none text-justify
@@ -206,56 +256,6 @@ export default function ServiceModal({
                     Contact Us
                   </a>
                 </div>
-
-                {/* MOBILE IMAGE PANEL */}
-                {service.image_url && (
-                  <div
-                    className="md:hidden mt-6 rounded-[22px] px-4 py-5 flex items-center justify-center"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #F84E33 0%, #890F4C 50%, #0F0200 100%)",
-                    }}
-                  >
-                    <div className="w-full flex flex-col items-center justify-center text-center relative">
-                      <div
-                        className="
-                          mx-auto relative
-                          rounded-2xl overflow-hidden ring-1 ring-black/15 shadow-lg bg-black/10
-                          w-[230px] h-[135px]
-                        "
-                      >
-                        {isPopular && (
-                          <div className="absolute top-3 right-3 h-6 pointer-events-none">
-                            <span className="rounded-full bg-amber-500 text-white text-[10px] font-bold px-3 py-1 shadow-sm">
-                              Popular
-                            </span>
-                          </div>
-                        )}
-                        <img
-                          src={service.image_url}
-                          alt={service.title}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-
-                      {summaryText && (
-                        <div
-                          className="
-                            mt-4 max-w-[95%]
-                            rounded-full 
-                            bg-gradient-to-r from-[#F84E33] to-[#890F4C]
-                            text-white shadow-md
-                            px-5 py-2
-                            text-[14px] font-semibold tracking-wide
-                          "
-                        >
-                          {summaryText}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 

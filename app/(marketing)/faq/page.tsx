@@ -94,7 +94,7 @@ export default function FAQPage() {
         </div>
       </section>
 
-      {/* ===== Hero FAQ (edge-to-edge, new gradient, BlockHead left) ===== */}
+      {/* ===== Hero FAQ (edge-to-edge, same image size as Testimonials, image bottom on mobile) ===== */}
       <section
         className="relative w-screen left-1/2 -translate-x-1/2 h-[450px] rounded-[50px] overflow-hidden mt-20"
         style={{
@@ -103,10 +103,10 @@ export default function FAQPage() {
         }}
       >
         <div className="mx-auto w-full max-w-[1200px] h-full flex flex-col md:flex-row items-center justify-center gap-10 px-6 md:px-10">
-          {/* LEFT IMAGE */}
-          <div className="flex justify-center md:justify-start">
+          {/* LEFT IMAGE -> bottom on mobile */}
+          <div className="flex justify-center md:justify-start order-2 md:order-1">
             <div className="relative bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-xl p-2">
-              <div className="overflow-hidden rounded-xl w-[280px] h-[200px] md:w-[320px] md:h-[320px]">
+              <div className="overflow-hidden rounded-xl w-[280px] h-[180px] md:w-[320px] md:h-[320px]">
                 <Image
                   src={tree}
                   alt="BlockHead creative artwork"
@@ -121,11 +121,10 @@ export default function FAQPage() {
             </div>
           </div>
 
-          {/* RIGHT CONTENT */}
-          <div className="flex flex-col items-center md:items-start text-center md:text-left text-white gap-4">
+          {/* RIGHT CONTENT -> top on mobile */}
+          <div className="flex flex-col items-center md:items-start text-center md:text-left text-white gap-4 order-1 md:order-2">
             <h2 className="text-2xl md:text-3xl italic font-bold">FAQ</h2>
 
-            {/* Pill with new gradient */}
             <div
               className="inline-block mb-3 rounded-full px-4 py-1 text-xs md:text-sm text-white font-semibold tracking-wide shadow-sm"
               style={{

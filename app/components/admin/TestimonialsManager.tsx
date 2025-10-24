@@ -1,30 +1,17 @@
-// components/admin/TestimonialsManager.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-
-// ✅ CSRF-aware fetch helper (relative import, no aliases)
 import { fetchWithCsrf } from "../../lib/fetchWithCsrf";
 
-/* ================== API + Canonical Types ================== */
-
-interface ApiUser {
-  id?: number | null;
-  first?: string | null;
-  last?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  picture?: string | null;
-  pictureUrl?: string | null;
-}
+/* ================== API Types ================== */
 
 interface ApiRow {
   id?: number | null;
-  content?: string | null; // server field
-  quote?: string | null; // UI alias (fallback)
+  content?: string | null;
+  quote?: string | null;
   createdAt?: string | null;
-  user?: ApiUser | null;
   favorite?: boolean | null;
+  imgUrl?: string | null;
 }
 
 interface PageResp<T> {
@@ -41,29 +28,21 @@ type CanonTestimonial = {
   id: number | null;
   quote: string | null;
   createdAt: string | null;
-  userId: number | null;
-  firstName: string | null;
-  lastName: string | null;
   favorite: boolean;
+  imgUrl: string | null;
 };
 
 function normalize(row: ApiRow): CanonTestimonial {
-  const u = row?.user ?? {};
-  const first = u.first ?? u.firstName ?? null;
-  const last = u.last ?? u.lastName ?? null;
-
   return {
     id: row?.id ?? null,
     quote: row?.content ?? row?.quote ?? null,
     createdAt: row?.createdAt ?? null,
-    userId: u?.id ?? null,
-    firstName: first,
-    lastName: last,
     favorite: !!row?.favorite,
+    imgUrl: row?.imgUrl ?? null,
   };
 }
 
-/* ================== Small UI Helpers ================== */
+/* ================== UI Helpers ================== */
 
 function Spinner() {
   return (
@@ -129,7 +108,7 @@ function IconButton({
   );
 }
 
-/* ================== Component ================== */
+/* ================== MAIN COMPONENT ================== */
 
 export default function TestimonialsManager({
   pageSize = 8,
@@ -140,9 +119,7 @@ export default function TestimonialsManager({
   heading?: string;
   pollMs?: number;
 }) {
-  // ✅ Use env var instead of prop
   const apiBase = process.env.NEXT_PUBLIC_API_URL!;
-
   const [items, setItems] = useState<CanonTestimonial[]>([]);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
@@ -160,20 +137,16 @@ export default function TestimonialsManager({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editing, setEditing] = useState<CanonTestimonial | null>(null);
   const [creating, setCreating] = useState(false);
-
-  const [form, setForm] = useState<{
-    quote: string;
-    userId: string;
-    favorite: boolean;
-  }>({
+  const [form, setForm] = useState({
     quote: "",
-    userId: "",
     favorite: false,
+    imgUrl: "",
   });
 
   const [refreshKey, setRefreshKey] = useState(0);
   const doRefresh = () => setRefreshKey((k) => k + 1);
 
+  /* ---------- Fetch data ---------- */
   useEffect(() => {
     let cancelled = false;
 
@@ -224,15 +197,17 @@ export default function TestimonialsManager({
     return () => clearInterval(id);
   }, [pollMs]);
 
+  /* ---------- Create/Edit handlers ---------- */
   function openCreate() {
-    setForm({ quote: "", userId: "", favorite: false });
+    setForm({ quote: "", favorite: false, imgUrl: "" });
     setCreating(true);
   }
+
   function openEdit(t: CanonTestimonial) {
     setForm({
       quote: t.quote ?? "",
-      userId: t.userId != null ? String(t.userId) : "",
       favorite: !!t.favorite,
+      imgUrl: t.imgUrl ?? "",
     });
     setEditing(t);
   }
@@ -240,9 +215,11 @@ export default function TestimonialsManager({
   async function saveCreateOrEdit() {
     try {
       setSaving(true);
-
-      const payload: any = { content: form.quote, favorite: !!form.favorite };
-      if (form.userId) payload.user = { userId: Number(form.userId) };
+      const payload = {
+        content: form.quote,
+        favorite: !!form.favorite,
+        imgUrl: form.imgUrl?.trim() || null,
+      };
 
       const isEdit = !!editing && editing.id != null;
       const url = isEdit
@@ -255,12 +232,7 @@ export default function TestimonialsManager({
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(
-          text || `Failed to ${isEdit ? "update" : "create"} testimonial`
-        );
-      }
+      if (!res.ok) throw new Error(`Failed ${res.status}`);
 
       setCreating(false);
       setEditing(null);
@@ -273,56 +245,44 @@ export default function TestimonialsManager({
     }
   }
 
+  /* ---------- Toggle favorite ---------- */
   async function toggleFavorite(t: CanonTestimonial) {
     if (t.id == null) return;
-
     setItems((prev) =>
       prev.map((it) => (it.id === t.id ? { ...it, favorite: !t.favorite } : it))
     );
-
     try {
-      const payload: any = { content: t.quote ?? "", favorite: !t.favorite };
-      if (t.userId != null) payload.user = { userId: t.userId };
-
+      const payload = {
+        content: t.quote ?? "",
+        favorite: !t.favorite,
+        imgUrl: t.imgUrl ?? null,
+      };
       const res = await fetchWithCsrf(`${apiBase}/api/testimonials/${t.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Failed ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Failed ${res.status}`);
       doRefresh();
-    } catch (e: any) {
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === t.id ? { ...it, favorite: t.favorite } : it
-        )
-      );
-      alert(e?.message ?? "Could not update favorite flag");
+    } catch {
+      alert("Could not update favorite flag");
     }
   }
 
+  /* ---------- Delete ---------- */
   async function handleDelete(id: number | null) {
     if (id == null) return;
     if (!confirm(`Delete testimonial #${id}? This cannot be undone.`)) return;
     try {
       setDeletingId(id);
-
       const res = await fetchWithCsrf(`${apiBase}/api/testimonials/${id}`, {
         method: "DELETE",
       });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Failed to delete (#${id})`);
-      }
+      if (!res.ok) throw new Error(`Failed ${res.status}`);
       setItems((prev) => prev.filter((c) => c.id !== id));
       doRefresh();
-    } catch (error: any) {
-      alert(error?.message ?? "Could not delete");
+    } catch (e: any) {
+      alert(e?.message ?? "Could not delete");
     } finally {
       setDeletingId(null);
     }
@@ -363,7 +323,7 @@ export default function TestimonialsManager({
                 setPage(0);
                 setQ(e.target.value);
               }}
-              placeholder="Search quote or user id…"
+              placeholder="Search quote…"
               className="w-56 md:w-64 max-w-[70vw] rounded-full border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-gray-200"
             />
 
@@ -385,26 +345,17 @@ export default function TestimonialsManager({
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left text-gray-600">
-                <th className="px-5 md:px-7 py-3 font-medium">Quote</th>
-                <th className="px-5 md:px-7 py-3 font-medium">User</th>
-                <th className="px-5 md:px-7 py-3 font-medium whitespace-nowrap">
-                  Favorite
-                </th>
-                <th className="px-5 md:px-7 py-3 font-medium whitespace-nowrap">
-                  Created
-                </th>
-                <th className="px-5 md:px-7 py-3 font-medium whitespace-nowrap">
-                  Actions
-                </th>
+                <th className="px-5 py-3 font-medium">Quote</th>
+                <th className="px-5 py-3 font-medium">Image</th>
+                <th className="px-5 py-3 font-medium">Favorite</th>
+                <th className="px-5 py-3 font-medium">Created</th>
+                <th className="px-5 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-5 md:px-7 py-6 text-center text-gray-500"
-                  >
+                  <td colSpan={5} className="py-6 text-center text-gray-500">
                     Loading…
                   </td>
                 </tr>
@@ -412,10 +363,7 @@ export default function TestimonialsManager({
 
               {err && !loading && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-5 md:px-7 py-6 text-center text-red-600"
-                  >
+                  <td colSpan={5} className="py-6 text-center text-red-600">
                     {err}
                   </td>
                 </tr>
@@ -423,10 +371,7 @@ export default function TestimonialsManager({
 
               {!loading && !err && items.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-5 md:px-7 py-6 text-center text-gray-500"
-                  >
+                  <td colSpan={5} className="py-6 text-center text-gray-500">
                     No testimonials found.
                   </td>
                 </tr>
@@ -435,27 +380,24 @@ export default function TestimonialsManager({
               {!loading &&
                 !err &&
                 items.map((t) => (
-                  <tr key={String(t.id ?? Math.random())} className="border-t">
-                    <td className="px-5 md:px-7 py-3 max-w-[420px]">
+                  <tr key={t.id ?? Math.random()} className="border-t">
+                    <td className="px-5 py-3 max-w-[420px]">
                       <span className="line-clamp-2 text-gray-700">
                         {t.quote ?? "—"}
                       </span>
                     </td>
-                    <td className="px-5 md:px-7 py-3">
-                      {t.firstName || t.lastName ? (
-                        <>
-                          {`${t.firstName ?? ""}${
-                            t.firstName && t.lastName ? " " : ""
-                          }${t.lastName ?? ""}`}
-                          <span className="text-xs text-gray-500 ml-2">
-                            ({t.userId ?? "—"})
-                          </span>
-                        </>
+                    <td className="px-5 py-3">
+                      {t.imgUrl ? (
+                        <img
+                          src={t.imgUrl}
+                          alt="testimonial"
+                          className="w-12 h-12 object-cover rounded-md"
+                        />
                       ) : (
-                        t.userId ?? "—"
+                        "—"
                       )}
                     </td>
-                    <td className="px-5 md:px-7 py-3 whitespace-nowrap">
+                    <td className="px-5 py-3 whitespace-nowrap">
                       <button
                         className={`rounded-full px-2 py-1 text-sm ${
                           t.favorite ? "bg-yellow-100" : "bg-gray-100"
@@ -466,12 +408,12 @@ export default function TestimonialsManager({
                         {t.favorite ? "★ Favorite" : "☆ Mark Favorite"}
                       </button>
                     </td>
-                    <td className="px-5 md:px-7 py-3 whitespace-nowrap text-gray-500">
+                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
                       {t.createdAt
                         ? new Date(t.createdAt).toLocaleString()
                         : "—"}
                     </td>
-                    <td className="px-5 md:px-7 py-3 whitespace-nowrap">
+                    <td className="px-5 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <IconButton title="Edit" onClick={() => openEdit(t)}>
                           ✏️ Edit
@@ -495,7 +437,7 @@ export default function TestimonialsManager({
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-center gap-3 px-5 md:px-7 py-5 border-t">
+        <div className="flex items-center justify-center gap-3 border-t py-5">
           <button
             className="rounded-full px-3 py-1.5 text-sm border hover:bg-gray-50 disabled:opacity-50"
             disabled={meta.first}
@@ -516,7 +458,7 @@ export default function TestimonialsManager({
         </div>
       </div>
 
-      {/* Create / Edit Modal */}
+      {/* Modal */}
       <Modal
         open={creating || !!editing}
         onClose={() => {
@@ -548,15 +490,15 @@ export default function TestimonialsManager({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm">User ID</label>
+            <label className="text-sm">Image URL</label>
             <input
-              type="number"
-              value={form.userId}
+              type="url"
+              value={form.imgUrl}
               onChange={(e) =>
-                setForm((f) => ({ ...f, userId: e.target.value }))
+                setForm((f) => ({ ...f, imgUrl: e.target.value }))
               }
+              placeholder="https://example.com/image.jpg"
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
-              required
             />
           </div>
 

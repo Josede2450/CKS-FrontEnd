@@ -1,36 +1,21 @@
-// app/testimonials/page.tsx
 "use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useState, useCallback } from "react";
-
-// Images
 import heroSignature from "../../public/images/HeroSignature.svg";
-import blockHead from "../../public/images/BlockHead.jpg"; // ✅ added import
+import blockHead from "../../public/images/BlockHead.jpg";
 
-// Final-guard default (your backend already provides a default)
-const DEFAULT_PFP =
+// Default fallback if testimonial has no image
+const DEFAULT_IMG =
   "https://i.pinimg.com/736x/27/5f/99/275f99923b080b18e7b474ed6155a17f.jpg";
 
-// Types reflecting your API
-type ApiUser = {
-  userId?: number;
-  name?: string;
-  firstName?: string;
-  lastName?: string;
-  title?: string;
-  avatarUrl?: string;
-  photoUrl?: string;
-  imageUrl?: string;
-  pictureUrl?: string; // backend-computed preferred URL
-};
-
 type ApiTestimonial = {
-  testimonialId?: number;
-  content?: string;
+  id?: number;
   quote?: string;
-  createdAt: string | null;
-  user?: ApiUser | null;
+  content?: string;
+  createdAt?: string | null;
+  favorite?: boolean;
+  imgUrl?: string | null;
 };
 
 type Page<T> = {
@@ -43,16 +28,8 @@ type Page<T> = {
   last: boolean;
 };
 
-type ViewTestimonial = {
-  id?: number;
-  quote: string;
-  author?: string;
-  role?: string;
-  avatar_url: string;
-};
-
 export default function TestimonialsPage() {
-  const [items, setItems] = useState<ViewTestimonial[]>([]);
+  const [items, setItems] = useState<ApiTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
@@ -60,54 +37,7 @@ export default function TestimonialsPage() {
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
-  // Normalize API -> view model
-  function normalize(api: ApiTestimonial | undefined): ViewTestimonial | null {
-    if (!api) return null;
-
-    const u = api.user || undefined;
-    const author =
-      u?.name ??
-      (u?.firstName || u?.lastName
-        ? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()
-        : undefined);
-
-    const role = u?.title ?? undefined;
-
-    const avatar_url =
-      u?.pictureUrl ||
-      u?.avatarUrl ||
-      u?.photoUrl ||
-      u?.imageUrl ||
-      DEFAULT_PFP;
-
-    const text =
-      typeof api.quote === "string" && api.quote.length > 0
-        ? api.quote
-        : api.content ?? "";
-
-    return {
-      id: api.testimonialId,
-      quote: text,
-      author,
-      role,
-      avatar_url,
-    };
-  }
-
-  // Safe parse JSON
-  function safeParsePage(raw: string): Page<ApiTestimonial> {
-    let cleaned = raw.replace(/^\)\]\}',?\s*/, "").trim();
-    const first = cleaned.indexOf("{");
-    const last = cleaned.lastIndexOf("}");
-    if (first === -1 || last === -1 || last <= first) {
-      throw new Error(
-        `Response is not valid JSON. First 200 chars: ${cleaned.slice(0, 200)}`
-      );
-    }
-    cleaned = cleaned.slice(first, last + 1);
-    return JSON.parse(cleaned) as Page<ApiTestimonial>;
-  }
-
+  // ✅ Fetch testimonials
   useEffect(() => {
     let cancelled = false;
 
@@ -115,31 +45,28 @@ export default function TestimonialsPage() {
       setLoading(true);
       setErr(null);
       try {
-        const url = `${apiBase}/api/testimonials?size=50&sort=createdAt,desc`;
-
+        const url = `${apiBase}/api/testimonials?favorite=true&sort=createdAt,desc`;
         const res = await fetch(url, {
           credentials: "include",
           headers: { Accept: "application/json" },
         });
 
-        const raw = await res.text();
-        if (!res.ok) {
-          throw new Error(
-            `${res.status} ${res.statusText}: ${raw.slice(0, 300)}`
-          );
-        }
+        if (!res.ok) throw new Error(`Failed ${res.status}`);
 
-        const data = safeParsePage(raw);
-        const list = (data.content || [])
-          .map(normalize)
-          .filter(Boolean) as ViewTestimonial[];
+        const data = (await res.json()) as Page<ApiTestimonial>;
+        const list = (data.content ?? []).map((t) => ({
+          id: t.id ?? 0,
+          quote: t.quote ?? t.content ?? "",
+          createdAt: t.createdAt ?? null,
+          imgUrl: t.imgUrl ?? DEFAULT_IMG,
+        }));
 
         if (!cancelled) {
           setItems(list);
           setIdx(0);
         }
       } catch (e: any) {
-        if (!cancelled) setErr(e?.message ?? "Failed to load testimonials.");
+        if (!cancelled) setErr(e?.message ?? "Failed to load testimonials");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -173,6 +100,7 @@ export default function TestimonialsPage() {
   const prev = useCallback(() => go(-1), [go]);
   const next = useCallback(() => go(1), [go]);
 
+  // Keyboard navigation
   useEffect(() => {
     if (!items.length) return;
     const onKey = (e: KeyboardEvent) => {
@@ -183,11 +111,12 @@ export default function TestimonialsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [items.length, prev, next]);
 
+  /* ================== UI ================== */
+
   return (
-    // ⬇️ Prevent horizontal scrollbar from edge-to-edge hero
     <main className="bg-white overflow-x-clip mt-12 px-4">
       {/* TOP TAGLINE */}
-      <section className="px-0">
+      <section>
         <div className="mx-auto w-full max-w-[1200px] flex justify-center items-center">
           <p className="text-2xl md:text-4xl italic text-gray-900 text-center font-serif tracking-wide">
             Excellence through creativity
@@ -195,7 +124,7 @@ export default function TestimonialsPage() {
         </div>
       </section>
 
-      {/* ===== Hero Testimonials ===== */}
+      {/* ===== Hero Section ===== */}
       <section
         className="relative w-screen left-1/2 -translate-x-1/2 h-[450px] rounded-[50px] overflow-hidden mt-20"
         style={{
@@ -222,7 +151,7 @@ export default function TestimonialsPage() {
 
             <p className="max-w-[500px] italic font-bold text-sm md:text-lg text-black/90 leading-relaxed">
               At CKS, we value every client voice. These testimonials highlight
-              the trust, creativity, and partnerships that drive us forward —
+              the trust, creativity, and partnerships that drive us forward —{" "}
               because your opinion truly matters to us.
             </p>
           </div>
@@ -247,11 +176,8 @@ export default function TestimonialsPage() {
         </div>
       </section>
 
-      {/* Spacer */}
-      <div className="h-6 md:h-10" />
-
-      {/* ===== Carousel ===== */}
-      <section className="mx-auto w-full max-w-[1200px] px-3 md:px-20">
+      {/* ===== Carousel Section ===== */}
+      <section className="mx-auto w-full max-w-[1200px] px-3 md:px-20 mt-12">
         <div
           className="rounded-[28px] md:rounded-[36px] p-5 md:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.06)] ring-1 ring-black/5"
           style={{
@@ -266,62 +192,37 @@ export default function TestimonialsPage() {
             {err && <p className="text-center text-red-600 text-sm">{err}</p>}
 
             {!loading && !err && current && (
-              <>
-                {/* Content */}
-                <div
-                  className={`transition-opacity duration-200 ${
-                    fading ? "opacity-0" : "opacity-100"
-                  }`}
-                  aria-live="polite"
-                >
-                  <div className="flex flex-col md:flex-row items-center md:items-start gap-5 md:gap-8">
-                    {/* Avatar */}
-                    <div className="shrink-0">
-                      <div className="relative">
-                        <div
-                          className="w-[96px] h-[96px] md:w-[112px] md:h-[112px] rounded-full overflow-hidden shadow-xl p-[3px]
-                 bg-gradient-to-r from-[#C78B3B] via-[#FCEBA4] to-[#C78B3B]
-                 backdrop-blur-md"
-                        >
-                          <div className="w-full h-full rounded-full overflow-hidden bg-white/10 border border-white/30">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={current.avatar_url}
-                              alt={current.author ?? "Client photo"}
-                              className="w-full h-full object-cover rounded-full"
-                              loading="lazy"
-                            />
-                          </div>
-                        </div>
-                      </div>
+              <div
+                className={`transition-opacity duration-200 ${
+                  fading ? "opacity-0" : "opacity-100"
+                }`}
+              >
+                <div className="flex flex-col md:flex-row items-center md:items-start gap-5 md:gap-8">
+                  {/* Image */}
+                  <div className="shrink-0">
+                    <div
+                      className="w-[110px] h-[110px] md:w-[140px] md:h-[140px] rounded-full overflow-hidden shadow-xl p-[3px]
+                       bg-gradient-to-r from-[#C78B3B] via-[#FCEBA4] to-[#C78B3B]"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={current.imgUrl ?? DEFAULT_IMG}
+                        alt="testimonial visual"
+                        className="w-full h-full object-cover rounded-full"
+                      />
                     </div>
+                  </div>
 
-                    {/* Quote + author */}
-                    <div className="flex-1 text-center md:text-left">
-                      <div className="mx-auto md:mx-0 w-10 h-10 rounded-full grid place-items-center bg-gray-100 text-gray-500 mb-3">
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="w-5 h-5"
-                          fill="currentColor"
-                          aria-hidden="true"
-                        >
-                          <path d="M7.2 11.4C7 9.5 8 7.7 9.7 6.8L9 5C6.2 6.3 4.6 9.2 5 12h4.5c.3 0 .5-.2.5-.6v-.1c0-.5-.3-.9-.8-.9H7.2zm8 0c-.2-1.9.8-3.7 2.5-4.6L17 5c-2.8 1.3-4.4 4.2-4 7h4.5c.3 0 .5-.2.5-.6v-.1c0-.5-.3-.9-.8-.9H15.2z" />
-                        </svg>
-                      </div>
+                  {/* Quote */}
+                  <div className="flex-1 text-center md:text-left">
+                    <blockquote className="text-[15px] md:text-[18px] text-gray-800 leading-relaxed italic whitespace-pre-line">
+                      {current.quote}
+                    </blockquote>
 
-                      <blockquote className="text-[15px] md:text[18px] text-gray-800 leading-relaxed italic whitespace-pre-line">
-                        {current.quote}
-                      </blockquote>
-
-                      {(current.author || current.role) && (
-                        <div className="mt-4 text-[13px] md:text-sm text-gray-600">
-                          —{" "}
-                          <span className="font-medium text-gray-800">
-                            {current.author ?? "Anonymous"}
-                          </span>
-                          {current.role ? `, ${current.role}` : null}
-                        </div>
-                      )}
+                    <div className="mt-4 text-[13px] md:text-sm text-gray-600">
+                      <span className="font-medium text-gray-800">
+                        {new Date(current.createdAt ?? "").toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -333,7 +234,6 @@ export default function TestimonialsPage() {
                       <button
                         onClick={prev}
                         className="rounded-full border border-gray-400 px-4 py-2 text-xs md:text-sm hover:bg-white/70 active:scale-95 shadow-sm bg-white"
-                        aria-label="Previous testimonial"
                       >
                         ← Prev
                       </button>
@@ -343,13 +243,11 @@ export default function TestimonialsPage() {
                       <button
                         onClick={next}
                         className="rounded-full border border-gray-400 px-4 py-2 text-xs md:text-sm hover:bg-white/70 active:scale-95 shadow-sm bg-white"
-                        aria-label="Next testimonial"
                       >
                         Next →
                       </button>
                     </div>
 
-                    {/* Dots */}
                     <div className="flex items-center gap-2">
                       {items.map((_, i) => (
                         <span
@@ -362,12 +260,12 @@ export default function TestimonialsPage() {
                     </div>
                   </div>
                 )}
-              </>
+              </div>
             )}
 
             {!loading && !err && !current && (
               <p className="text-center text-sm text-gray-700">
-                No testimonials found yet.
+                No testimonials yet.
               </p>
             )}
           </div>
